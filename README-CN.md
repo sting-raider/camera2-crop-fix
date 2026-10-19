@@ -2,6 +2,10 @@
 
 [English](README.md)
 
+> **上游问题跟踪：** [LineageOS/issues#853](https://github.com/LineageOS/issues/issues/853)
+>
+> 调查与修复进展请查看该报告。
+
 可开关、可撤销的 Magisk 模块，用于修正 **OnePlus 15T（PLZ110）特定 LineageOS 构建**上的裁切元数据重复缩放。适用于独立打开物理后摄的相机路径，修正预览与静态照片倍率不一致，以及 10× 裁切尺寸过小造成的拍照失败。
 
 **当前为预发布版，仅适配一组已验证的设备与系统文件。** 其他版本会被拒绝，即使版本名称相近。

@@ -2,6 +2,10 @@
 
 [简体中文](README-CN.md)
 
+> **Upstream bug tracking:** [LineageOS/issues#853](https://github.com/LineageOS/issues/issues/853)
+>
+> Follow the upstream report for investigation and resolution status.
+
 A reversible Magisk module that corrects repeated crop metadata scaling on the **OnePlus 15T (PLZ110)** with the supported LineageOS build. It fixes the mismatch between preview and still-photo magnification on independently opened physical rear cameras, including the crop-size failure at 10×.
 
 **Pre-release. One device/build profile is supported.** Other builds are rejected, even if their version names look similar.
