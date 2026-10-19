@@ -1,0 +1,23 @@
+{
+  "device": "OnePlus 15T (PLZ110)",
+  "lineage_version": "24.0-20261011-NIGHTLY-fairlady",
+  "display_id": "CP2A.260605.016",
+  "vendor_fingerprint": "OnePlus/PLZ110/OP64DDL1:16/BP2A.250605.015/B.40e10d0-1bdc90a-1c00f52:user/release-keys",
+  "original_sha256": "3dde616f0d57fc7e17dae37531aad053bd63b4e86d50a14cd96aa1557ce7ac97",
+  "original_size": 4103360,
+  "entry": 3741952,
+  "rx_limit": 3751936,
+  "state": 3973184,
+  "state_size": 64,
+  "callsite": 2458108,
+  "original_mapper": 3616756,
+  "rx_header_offset": 232,
+  "rw_header_offset": 344,
+  "rx_start": 753664,
+  "rw_start": 3964928,
+  "dependencies": {
+    "/system/lib64/libcamera_client.so": "ce073d3067982520a164de165a6dde91ce038effec82bdfa1424416901f56581",
+    "/system/lib64/libcamera_metadata.so": "f3e2723a2d6fd16d180694d29c5628128bc393a909c99c92990d992ab049587c",
+    "/vendor/lib64/hw/camera.qcom.so": "b7a0af5f8909d138932a97ba68f6f2804eb8a0088c86de49edf390b7a1c58890"
+  }
+}

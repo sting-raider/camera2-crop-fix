@@ -1,0 +1,40 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CC: clang-18
+      LD_LLD: ld.lld-18
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install LLVM
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang-18 lld-18
+      - name: Test
+        run: python3 tools/test.py
+      - name: Build
+        run: python3 tools/build.py
+      - name: Check reproducibility
+        run: |
+          cp dist/SHA256SUMS build/first-build.sha256
+          python3 tools/build.py
+          cmp build/first-build.sha256 dist/SHA256SUMS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: module
+          path: dist/*
+          retention-days: 3
+          if-no-files-found: error
