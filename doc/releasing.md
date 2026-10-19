@@ -7,8 +7,9 @@
 3. Keep default workflow permissions read-only. The release job alone requests `contents: write`; a personal access token or repository secret is not required.
 4. Protect `main` with an active ruleset requiring PRs, the GitHub Actions `verify` and `conventions` checks, an up-to-date branch, resolved review threads and linear history. Block force pushes and deletion; configure no bypass actors. The current sole-maintainer setup requires zero approvals.
 5. Allow squash merging only, use `PR_TITLE` for the squash title and `BLANK` for its message body, and enable automatic topic-branch deletion. The required `conventions` check validates PR titles and every proposed commit header. See [CONTRIBUTING.md](../.github/CONTRIBUTING.md) for title and branch conventions.
+6. Under **Settings → Actions → General → Approval for running fork pull request workflows from contributors**, select **Require approval for all external contributors** (`all_external_contributors`). This is a repository setting, not a workflow YAML option.
 
-Fork PRs run with a read-only token. A first-time contributor may require an Actions approval in GitHub; do not use `pull_request_target` to execute contributor code.
+External fork PR workflows wait for maintainer approval before executing, including contributors with previously merged PRs. Pending approval records may still appear; they do not execute runner jobs. Repository owners and collaborators with write access remain trusted. Approving a workflow allows its jobs to use the repository's runners, so inspect the proposed code first. Fork PR jobs use a read-only token. Keep the `pull_request` trigger; do not use `pull_request_target` to execute contributor code. See [GitHub's approval documentation](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/approve-runs-from-forks).
 
 ## Cost
 

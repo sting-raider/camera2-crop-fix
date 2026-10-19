@@ -33,6 +33,7 @@ with a letter. Use `!` before `:` for a breaking change. Keep headers within
 
 CI checks the current PR title and every commit proposed by the PR. Title edits
 rerun the convention check. Existing commits on `main` are outside that range.
+Workflows from external forks require maintainer approval before executing.
 
 ## Merge policy
 
