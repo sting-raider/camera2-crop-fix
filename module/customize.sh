@@ -38,6 +38,6 @@ for script in "$MODPATH"/*.sh; do set_perm "$script" 0 0 0700; done
 set_perm "$MODPATH/bin/cameraserver.native" 0 2000 0755
 chcon u:object_r:cameraserver_exec:s0 "$MODPATH/bin/cameraserver.native" || abort "Cannot label camera image"
 touch "$MODPATH/skip_mount"
-ui_print "OnePlus 15T Camera2 Crop Fix installed. Reboot to finish."
+ui_print "OnePlus 15 Camera2 Crop Fix installed. Reboot to finish."
 ui_print "First install stays paused. Close camera apps, then use Action to enable."
 ui_print "Updates preserve your enable request. Unsupported builds stay off."

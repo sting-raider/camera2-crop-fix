@@ -423,7 +423,7 @@ watch() {
     [ "$(getprop "$PIDKEY")" = "$PID" ] && [ "$(getprop "$KEY")" = 1 ] || { fault 'enabled PID/flag changed externally'; flock -u 9; exit 1; }
     ticks=$((ticks+1))
     if [ "$ticks" -ge 15 ]; then policy && [ "$POLICY" = "$(cat "$RUN/policy.sha")" ] || { fault 'policy/enforcing audit changed'; flock -u 9; exit 1; }; ticks=0; fi
-    printf 'pid=%s verified=%s changed_id2=%s changed_id3=%s fault=0\n' "$PID" "$VERIFIED" "$COUNT2" "$COUNT3" > "$RUN/status"
+    printf 'pid=%s verified=%s changed_id2=%s changed_id4=%s fault=0\n' "$PID" "$VERIFIED" "$COUNT2" "$COUNT3" > "$RUN/status"
     flock -u 9
   done
 }
