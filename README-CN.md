@@ -18,15 +18,15 @@
 | LineageOS | `24.0-20261011-NIGHTLY-fairlady` |
 | Build ID | `CP2A.260605.016` |
 | 相机路径 | 物理后摄 ID `2`、`3` |
-| Root 管理器 | 已测试 Magisk 30.7；更高版本仍须通过相同检查 |
+| Root 管理器 | 已测试 Magisk 30.7；更高版本仍须通过相同检查。支持带 Action 按钮的 APatch（尚未实机测试） |
 
-安装和运行时还会核对相机服务及相关库的完整哈希，具体见 [profile.json](profile.json)。当前安装包不支持 KernelSU 或 APatch。
+安装和运行时还会核对相机服务及相关库的完整哈希，具体见 [profile.json](profile.json)。当前安装包不支持 KernelSU。
 
 ## 安装与开关
 
 1. 从 [Releases](https://github.com/hackroid/camera2-crop-fix/releases) 下载模块 ZIP，勿使用 GitHub 自动生成的源码 ZIP。
-2. 打开 **Magisk → 模块 → 从本地安装**，选择 ZIP，安装后重启。
-3. 关闭相机应用，在 Magisk 中找到本模块，点 **Action／操作**启用。
+2. 打开 **Magisk/APatch → 模块 → 从本地安装**，选择 ZIP，安装后重启。
+3. 关闭相机应用，在 Magisk 或 APatch 中找到本模块，点 **Action／操作**启用。
 4. 再点一次 **Action／操作**暂停；请求的开关状态会在重启后保留。
 
 `flag=1` 表示开启，`flag=0` 表示暂停。`verified=0` 表示当前相机服务进程尚未处理匹配的相机结果。首次启用可能重启相机服务；同一已核对进程内的暂停、恢复无需重启服务。
@@ -35,7 +35,7 @@
 
 ### 卸载与恢复
 
-在 Magisk 中卸载后重启，即可恢复原版系统程序。模块只使用临时文件挂载，不写入系统分区。
+在 Magisk 或 APatch 中卸载后重启，即可恢复原版系统程序。模块只使用临时文件挂载，不写入系统分区。
 
 如需立即完整回退，请先关闭相机应用，再运行：
 

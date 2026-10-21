@@ -1,8 +1,13 @@
 #!/system/bin/sh
 # SPDX-License-Identifier: Apache-2.0
 [ "$ARCH" = arm64 ] || abort "Only arm64 is supported"
-[ "$BOOTMODE" = true ] || abort "Install from the Magisk app"
-[ "$MAGISK_VER_CODE" -ge 30700 ] || abort "Magisk 30.7 or newer is required"
+[ "$BOOTMODE" = true ] || abort "Install from the Magisk or APatch app"
+# APatch reports a fixed MAGISK_VER_CODE of 27000, so it is gated on its own tools.
+if [ "$APATCH" = true ]; then
+  [ -x /data/adb/ap/bin/busybox ] && [ -x /data/adb/ap/bin/resetprop ] || abort "APatch busybox/resetprop not found"
+else
+  [ "$MAGISK_VER_CODE" -ge 30700 ] || abort "Magisk 30.7 or newer is required"
+fi
 (cd "$MODPATH" && sha256sum -c local-files.sha256) >/dev/null || abort "Package integrity check failed"
 . "$MODPATH/profile.sh" || abort "Cannot read build profile"
 [ "$(getprop ro.lineage.version)" = "$LINEAGE_VERSION" ] &&

@@ -1,7 +1,12 @@
 #!/system/bin/sh
 # SPDX-License-Identifier: Apache-2.0
-BB=/data/adb/magisk/busybox
-MAGISK=/data/adb/magisk/magisk
+if [ -x /data/adb/ap/bin/busybox ]; then
+  BB=/data/adb/ap/bin/busybox
+  resetprop() { /data/adb/ap/bin/resetprop "$@"; }
+else
+  BB=/data/adb/magisk/busybox
+  resetprop() { /data/adb/magisk/magisk resetprop "$@"; }
+fi
 if [ "${ASH_STANDALONE:-0}" != 1 ]; then
   export ASH_STANDALONE=1
   exec "$BB" sh "$0" "$@"
@@ -25,7 +30,7 @@ birth() { awk '{print $22}' "/proc/$1/stat" 2>/dev/null; }
 number() { case "$1" in *[!0-9]*|'') return 1;; esac; }
 hash() { case "$1" in *[!0-9a-f]*|'') return 1;; esac; [ "${#1}" = 64 ]; }
 label() { ls -Zd "$1" | awk '{for(i=1;i<=NF;i++) if($i~/^u:object_r:/) print $i}'; }
-set_off() { "$MAGISK" resetprop -n "$KEY" 0 && [ "$(getprop "$KEY")" = 0 ]; }
+set_off() { resetprop -n "$KEY" 0 && [ "$(getprop "$KEY")" = 0 ]; }
 note() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" >> "$RUN/events.log"; }
 fault() {
   set_off || echo 'Runtime OFF could not be confirmed' >&2
@@ -60,7 +65,7 @@ if [ ! -d "$STATE" ]; then mkdir -m 0700 "$STATE" || exit 1; fi
 mkdir -p "$RUN" && chmod 0700 "$RUN" || exit 1
 BOOT=$(cat /proc/sys/kernel/random/boot_id) || exit 1
 INITNS=$(ns 1)
-if [ "$(ns $$)" != "$INITNS" ] || [ -z "$INITNS" ]; then set_off; echo 'Use Magisk su -mm; init namespace required' >&2; exit 1; fi
+if [ "$(ns $$)" != "$INITNS" ] || [ -z "$INITNS" ]; then set_off; echo 'Use su -mm (Magisk) or run as APatch root; init namespace required' >&2; exit 1; fi
 mount_id() { awk -v p="$TARGET" '$5==p{print $1}' /proc/self/mountinfo; }
 data_mount() { awk '$5=="/data"{print $1" "$6" "$NF}' /proc/self/mountinfo; }
 owned_flags() {
@@ -284,8 +289,8 @@ activate() {
   printf '%s\n' "$POLICY" > "$RUN/policy.sha"
   start_watcher || { fault 'independent watcher did not become ready'; return 1; }
   watcher_alive && same_pid && owned_flags && read_native_state && [ "$NATIVE_FAULT" = 0 ] || { fault 'watcher/PID/mount/native state changed at final enable'; return 1; }
-  "$MAGISK" resetprop -n "$PIDKEY" "$PID" && [ "$(getprop "$PIDKEY")" = "$PID" ] &&
-    "$MAGISK" resetprop -n "$KEY" 1 && [ "$(getprop "$KEY")" = 1 ] || { fault 'PID/flag enable readback failed'; return 1; }
+  resetprop -n "$PIDKEY" "$PID" && [ "$(getprop "$PIDKEY")" = "$PID" ] &&
+    resetprop -n "$KEY" 1 && [ "$(getprop "$KEY")" = 1 ] || { fault 'PID/flag enable readback failed'; return 1; }
   printf 'armed pid=%s; waiting for native changed result\n' "$PID" > "$RUN/status"
   note "armed reviewed PID $PID:$START; no future automatic restart"
 }
