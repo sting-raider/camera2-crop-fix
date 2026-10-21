@@ -115,7 +115,7 @@ static int snapshot(const void *metadata, Snapshot *out) {
 }
 
 /* CaptureOutputStates.cameraId is a const libc++ string reference at +0.
- * Only exact one-character IDs 2/3 can qualify, so reject other valid strings
+ * Only exact one-character IDs 2/4 (OnePlus 15 main/tele) can qualify, so reject other valid strings
  * before further reads. Both verified short and long layouts are supported. */
 static u32 source_id(const void *states) {
     if (states == (const void *)0) return 0;
@@ -125,7 +125,7 @@ static u32 source_id(const void *states) {
     if (count != 1) return 0;
     const u8 *data = (string[0] & 1) ? ptr_at(string, 16) : string + 1;
     if (data == (const u8 *)0 || data[1] != 0) return 0;
-    return data[0] == '2' ? 2 : data[0] == '3' ? 3 : 0;
+    return data[0] == '2' ? 2 : data[0] == '4' ? 3 : 0; /* tele keeps internal slot 3 */
 }
 
 static int arrays_match(const void *states) {
