@@ -5,7 +5,14 @@
 [ "$MAGISK_VER_CODE" -ge 30700 ] || abort "Magisk 30.7 or newer is required"
 (cd "$MODPATH" && sha256sum -c local-files.sha256) >/dev/null || abort "Package integrity check failed"
 . "$MODPATH/profile.sh" || abort "Cannot read build profile"
-[ "$(getprop ro.lineage.version)" = "$LINEAGE_VERSION" ] &&
+lineage_supported() {
+  running=$(getprop ro.lineage.version)
+  for version in $LINEAGE_VERSIONS; do
+    [ "$running" != "$version" ] || return 0
+  done
+  return 1
+}
+lineage_supported &&
   [ "$(getprop ro.build.display.id)" = "$DISPLAY_ID" ] &&
   [ "$(getprop ro.vendor.build.fingerprint)" = "$VENDOR_FINGERPRINT" ] || abort "Unsupported ROM build"
 sha256sum -c "$MODPATH/dependencies.sha256" >/dev/null || abort "Unsupported camera libraries"
