@@ -1,10 +1,11 @@
 ## 0.4.0-beta.2
 
-Support the official OnePlus 15T (PLZ110) LineageOS builds `24.0-20261011-NIGHTLY-fairlady`, `24.0-20261014-NIGHTLY-fairlady`, `24.0-20261015-NIGHTLY-fairlady` and `24.0-20261022-NIGHTLY-fairlady` in one package. The native patch source and its exact camera-service and camera-library hash checks are unchanged, so a listed build with different camera files is still rejected at install and activation.
+Support these official LineageOS builds in one package: OnePlus 15T (PLZ110) `24.0-20261011-NIGHTLY-fairlady`, `24.0-20261014-NIGHTLY-fairlady`, `24.0-20261015-NIGHTLY-fairlady` and `24.0-20261022-NIGHTLY-fairlady`; OnePlus 15 `24.0-20261014-NIGHTLY-infiniti` and `24.0-20261021-NIGHTLY-infiniti`. Each build is accepted only with its own device's vendor fingerprint and camera HAL hash. The native patch source and the camera-service and system camera-library hash checks are unchanged; `camera.qcom.so` is checked against each device's own hash. A listed build with different camera files is still rejected at install and activation.
 
-- 20261011: device-tested profile.
-- 20261022: camera service and the three checked camera libraries are byte-identical to the 20261011 profile (official OTA). Device-tested after the OTA: unmodified, physical IDs 2 and 3 return crop2 as ratio 1 / 1024×768. With this package they return 2048×1536, the controller reports verified with no fault, and the correction re-arms after reboot.
-- 20261014, 20261015: listed by exact version; their camera files were not extracted, so the on-device hash checks decide.
+- fairlady 20261011: device-tested profile.
+- fairlady 20261022: camera service and the three checked camera libraries are byte-identical to the 20261011 profile (official OTA). Device-tested after the OTA: unmodified, physical IDs 2 and 3 return crop2 as ratio 1 / 1024×768. With this package they return 2048×1536, the controller reports verified with no fault, and the correction re-arms after reboot.
+- fairlady 20261014, 20261015: listed by exact version; their camera files were not extracted, so the on-device hash checks decide.
+- infiniti 20261014, 20261021: the camera service, `libcamera_client.so` and `libcamera_metadata.so` are byte-identical to the 15T profile, so the same patch applies. `camera.qcom.so` and the vendor fingerprint are the OnePlus 15's own and are pinned (official OTAs). Not device-tested. The guard corrects only physical rear cameras `2` and `3` that report the 15T's 4096×3072 arrays and 5.59/12.19 mm focal lengths; other results pass through unchanged and status stays at `verified=0`.
 
 ## 0.4.0-beta.1
 

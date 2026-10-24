@@ -28,11 +28,14 @@ PIDKEY=persist.camera.zoom_crop_fix.pid
 CANDIDATE=$(cat "$MODDIR/native.sha256" 2>/dev/null)
 case "$1" in on|pause|restore|toggle|boot|watch|status) MODE=$1;; *) echo 'on|pause|restore|toggle|status' >&2; exit 2;; esac
 sha() { sha256sum "$1" | awk '{print $1}'; }
-lineage_supported() {
-  running=$(getprop ro.lineage.version)
-  for version in $LINEAGE_VERSIONS; do
-    [ "$running" != "$version" ] || return 0
-  done
+# Sets CODENAME when the running build is listed with its vendor fingerprint.
+build_supported() {
+  running=$(getprop ro.lineage.version); vendor=$(getprop ro.vendor.build.fingerprint)
+  while read -r version fingerprint codename; do
+    [ -n "$version" ] && [ "$running" = "$version" ] && [ "$vendor" = "$fingerprint" ] || continue
+    CODENAME=$codename
+    return 0
+  done < "$1"
   return 1
 }
 ns() { readlink "/proc/$1/ns/mnt"; }
@@ -185,10 +188,9 @@ verify_activation() {
     [ -f "$MODDIR/skip_mount" ] && [ ! -e "$MODDIR/system" ] || return 1
   [ "$(readlink -f "$TARGET")" = "$TARGET" ] || return 1
   (cd "$MODDIR" && sha256sum -c local-files.sha256 && sha256sum -c generated-files.sha256) >> "$RUN/events.log" 2>&1 || return 1
-  lineage_supported &&
-    [ "$(getprop ro.build.display.id)" = "$DISPLAY_ID" ] &&
-    [ "$(getprop ro.vendor.build.fingerprint)" = "$VENDOR_FINGERPRINT" ] || return 1
-  sha256sum -c "$MODDIR/dependencies.sha256" >> "$RUN/events.log" 2>&1 || return 1
+  build_supported "$MODDIR/builds" &&
+    [ "$(getprop ro.build.display.id)" = "$DISPLAY_ID" ] || return 1
+  sha256sum -c "$MODDIR/dependencies.$CODENAME.sha256" >> "$RUN/events.log" 2>&1 || return 1
   hash "$CANDIDATE" && [ "$(sha "$PAYLOAD")" = "$CANDIDATE" ] && [ "$(stat -c %u:%g:%a "$PAYLOAD")" = 0:2000:755 ] &&
     [ "$(label "$PAYLOAD")" = u:object_r:cameraserver_exec:s0 ] &&
     [ "$(label "$TARGET")" = u:object_r:cameraserver_exec:s0 ] || return 1
