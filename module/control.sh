@@ -47,6 +47,13 @@ fault() {
   note "fault: $*; no automatic retry"
   return 1
 }
+# APatch Soft Reboot restarts the framework and re-runs service.sh in the same
+# kernel boot, without restarting cameraserver. A boot entry this kernel boot
+# already processed leaves the flag, bind and watcher as they are.
+if [ "$MODE" = boot ] && [ "$APATCH" = true ] && [ ! -L "$STATE" ] &&
+  [ "$(cat "$RUN/boot.id" 2>/dev/null)" = "$(cat /proc/sys/kernel/random/boot_id)" ]; then
+  exit 0
+fi
 # A boot entry clears the persistent gate before acquiring any UI/phase lock,
 # even if another operation or an incomplete state directory later rejects it.
 if [ "$MODE" = boot ]; then
