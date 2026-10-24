@@ -5,17 +5,19 @@
 [ "$MAGISK_VER_CODE" -ge 30700 ] || abort "Magisk 30.7 or newer is required"
 (cd "$MODPATH" && sha256sum -c local-files.sha256) >/dev/null || abort "Package integrity check failed"
 . "$MODPATH/profile.sh" || abort "Cannot read build profile"
-lineage_supported() {
-  running=$(getprop ro.lineage.version)
-  for version in $LINEAGE_VERSIONS; do
-    [ "$running" != "$version" ] || return 0
-  done
+# Sets CODENAME when the running build is listed with its vendor fingerprint.
+build_supported() {
+  running=$(getprop ro.lineage.version); vendor=$(getprop ro.vendor.build.fingerprint)
+  while read -r version fingerprint codename; do
+    [ -n "$version" ] && [ "$running" = "$version" ] && [ "$vendor" = "$fingerprint" ] || continue
+    CODENAME=$codename
+    return 0
+  done < "$1"
   return 1
 }
-lineage_supported &&
-  [ "$(getprop ro.build.display.id)" = "$DISPLAY_ID" ] &&
-  [ "$(getprop ro.vendor.build.fingerprint)" = "$VENDOR_FINGERPRINT" ] || abort "Unsupported ROM build"
-sha256sum -c "$MODPATH/dependencies.sha256" >/dev/null || abort "Unsupported camera libraries"
+build_supported "$MODPATH/builds" &&
+  [ "$(getprop ro.build.display.id)" = "$DISPLAY_ID" ] || abort "Unsupported ROM build"
+sha256sum -c "$MODPATH/dependencies.$CODENAME.sha256" >/dev/null || abort "Unsupported camera libraries"
 state=/data/adb/camera2_native_zoom_fix
 [ ! -L "$state" ] || abort "State path must not be a symlink"
 if [ ! -e "$state" ]; then mkdir -m 0700 "$state" || abort "Cannot create private state"; fi
@@ -40,6 +42,6 @@ for script in "$MODPATH"/*.sh; do set_perm "$script" 0 0 0700; done
 set_perm "$MODPATH/bin/cameraserver.native" 0 2000 0755
 chcon u:object_r:cameraserver_exec:s0 "$MODPATH/bin/cameraserver.native" || abort "Cannot label camera image"
 touch "$MODPATH/skip_mount"
-ui_print "OnePlus 15T Camera2 Crop Fix installed. Reboot to finish."
+ui_print "OnePlus 15/15T Camera2 Crop Fix installed. Reboot to finish."
 ui_print "First install stays paused. Close camera apps, then use Action to enable."
 ui_print "Updates preserve your enable request. Unsupported builds stay off."

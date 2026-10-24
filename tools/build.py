@@ -138,19 +138,53 @@ def apply_regions(original, profile, regions):
     return bytes(result)
 
 
-def lineage_versions(profile):
-    require('lineage_version' not in profile, 'Use lineage_versions, not lineage_version')
-    versions = profile.get('lineage_versions')
-    require(isinstance(versions, list) and versions and
-            all(isinstance(version, str) and re.fullmatch(r'24\.0-[0-9]{8}-NIGHTLY-fairlady', version)
-                for version in versions), 'Invalid LineageOS version allowlist')
+def dependency_map(dependencies):
+    require(isinstance(dependencies, dict) and all(
+        isinstance(path, str) and re.fullmatch(r'/[!-~]+', path) and
+        isinstance(digest, str) and re.fullmatch(r'[0-9a-f]{64}', digest) for path, digest in dependencies.items()),
+        'Invalid dependency hashes')
+    return dependencies
+
+
+def devices(profile):
+    require(not {'lineage_version', 'lineage_versions', 'vendor_fingerprint'} & set(profile),
+            'List builds per device under devices')
+    shared = dependency_map(profile.get('dependencies'))
+    entries = profile.get('devices')
+    require(isinstance(entries, list) and entries, 'Missing device list')
+    codenames, versions = [], []
+    for device in entries:
+        require(isinstance(device, dict) and set(device) ==
+                {'name', 'codename', 'lineage_versions', 'vendor_fingerprint', 'dependencies'}, 'Unexpected device keys')
+        codename, listed = device['codename'], device['lineage_versions']
+        require(isinstance(codename, str) and re.fullmatch(r'[a-z0-9]+', codename), 'Invalid device codename')
+        require(isinstance(listed, list) and listed and
+                all(isinstance(version, str) and re.fullmatch(r'24\.0-[0-9]{8}-NIGHTLY-' + codename, version)
+                    for version in listed), 'Invalid LineageOS version allowlist')
+        require(isinstance(device['vendor_fingerprint'], str) and re.fullmatch(r'[!-~]+', device['vendor_fingerprint']),
+                'Invalid vendor fingerprint')
+        require(not set(shared) & set(dependency_map(device['dependencies'])), 'Dependency listed twice')
+        codenames.append(codename)
+        versions += listed
+    require(len(codenames) == len(set(codenames)), 'Duplicate device codename')
     require(len(versions) == len(set(versions)), 'Duplicate LineageOS version')
-    return versions
+    return entries
+
+
+def build_list(targets):
+    return ''.join(f'{version} {device["vendor_fingerprint"]} {device["codename"]}\n'
+                   for device in targets for version in device['lineage_versions'])
+
+
+def dependency_lists(profile, targets):
+    return {device['codename']: ''.join(f'{digest}  {path}\n' for path, digest in
+                                        {**profile['dependencies'], **device['dependencies']}.items())
+            for device in targets}
 
 
 def build_package(args):
     profile = json.loads((ROOT/'profile.json').read_text())
-    versions = lineage_versions(profile)
+    targets = devices(profile)
     build = ROOT/'build'
     build.mkdir(exist_ok=True)
     elf = compile_native(build, args.cc, args.ld)
@@ -166,12 +200,13 @@ def build_package(args):
     (stage/'patch.bin').write_bytes(payload)
     (stage/'patch.plan').write_text(''.join(plan))
     facts = {'ORIGINAL': profile['original_sha256'], 'ORIGINAL_SIZE': profile['original_size'],
-             'LINEAGE_VERSIONS': ' '.join(versions), 'DISPLAY_ID': profile['display_id'],
-             'VENDOR_FINGERPRINT': profile['vendor_fingerprint'], 'ENTRY': hex(profile['entry']),
+             'DISPLAY_ID': profile['display_id'], 'ENTRY': hex(profile['entry']),
              'TEXT_END': hex(end), 'STATE_OFFSET': hex(profile['state']), 'PATCH_SIZE': len(payload)}
     (stage/'profile.sh').write_text('# Generated from profile.json and the linked payload.\n' +
                                   ''.join(f'{key}={shlex.quote(str(value))}\n' for key, value in facts.items()))
-    (stage/'dependencies.sha256').write_text(''.join(f'{digest}  {path}\n' for path, digest in profile['dependencies'].items()))
+    (stage/'builds').write_text(build_list(targets))
+    for codename, listing in dependency_lists(profile, targets).items():
+        (stage/f'dependencies.{codename}.sha256').write_text(listing)
     props = dict(line.split('=', 1) for line in (stage/'module.prop').read_text().splitlines())
     version = props['version']
     require(re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.]+)?', version), 'Invalid version')
