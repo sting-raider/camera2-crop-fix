@@ -1,7 +1,15 @@
 #!/system/bin/sh
 # SPDX-License-Identifier: Apache-2.0
-BB=/data/adb/magisk/busybox
-MAGISK=/data/adb/magisk/magisk
+# APatch exports APATCH=true to module scripts. A manual run uses APatch's tools
+# only when Magisk's are absent, and passes that choice on to the watcher.
+if [ "$APATCH" = true ] || { [ ! -x /data/adb/magisk/busybox ] && [ -x /data/adb/ap/bin/busybox ]; }; then
+  export APATCH=true
+  BB=/data/adb/ap/bin/busybox
+  resetprop() { /data/adb/ap/bin/resetprop "$@"; }
+else
+  BB=/data/adb/magisk/busybox
+  resetprop() { /data/adb/magisk/magisk resetprop "$@"; }
+fi
 if [ "${ASH_STANDALONE:-0}" != 1 ]; then
   export ASH_STANDALONE=1
   exec "$BB" sh "$0" "$@"
@@ -35,7 +43,7 @@ birth() { awk '{print $22}' "/proc/$1/stat" 2>/dev/null; }
 number() { case "$1" in *[!0-9]*|'') return 1;; esac; }
 hash() { case "$1" in *[!0-9a-f]*|'') return 1;; esac; [ "${#1}" = 64 ]; }
 label() { ls -Zd "$1" | awk '{for(i=1;i<=NF;i++) if($i~/^u:object_r:/) print $i}'; }
-set_off() { "$MAGISK" resetprop -n "$KEY" 0 && [ "$(getprop "$KEY")" = 0 ]; }
+set_off() { resetprop -n "$KEY" 0 && [ "$(getprop "$KEY")" = 0 ]; }
 note() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" >> "$RUN/events.log"; }
 fault() {
   set_off || echo 'Runtime OFF could not be confirmed' >&2
@@ -49,6 +57,16 @@ fault() {
   note "fault: $*; no automatic retry"
   return 1
 }
+# APatch Soft Reboot restarts the framework and re-runs post-fs-data and
+# service.sh in the same kernel boot, without restarting cameraserver. A boot
+# entry this kernel boot already processed leaves the flag, bind and watcher as
+# they are. Module updates, removals or policy changes applied by that
+# post-fs-data still fault the watcher; those need a full reboot.
+if [ "$MODE" = boot ] && [ "$APATCH" = true ] && [ ! -L "$STATE" ] &&
+  boot_now=$(cat /proc/sys/kernel/random/boot_id) && [ -n "$boot_now" ] &&
+  [ "$(cat "$RUN/boot.id" 2>/dev/null)" = "$boot_now" ]; then
+  exit 0
+fi
 # A boot entry clears the persistent gate before acquiring any UI/phase lock,
 # even if another operation or an incomplete state directory later rejects it.
 if [ "$MODE" = boot ]; then
@@ -70,7 +88,7 @@ if [ ! -d "$STATE" ]; then mkdir -m 0700 "$STATE" || exit 1; fi
 mkdir -p "$RUN" && chmod 0700 "$RUN" || exit 1
 BOOT=$(cat /proc/sys/kernel/random/boot_id) || exit 1
 INITNS=$(ns 1)
-if [ "$(ns $$)" != "$INITNS" ] || [ -z "$INITNS" ]; then set_off; echo 'Use Magisk su -mm; init namespace required' >&2; exit 1; fi
+if [ "$(ns $$)" != "$INITNS" ] || [ -z "$INITNS" ]; then set_off; echo 'Use su -mm; init namespace required' >&2; exit 1; fi
 mount_id() { awk -v p="$TARGET" '$5==p{print $1}' /proc/self/mountinfo; }
 data_mount() { awk '$5=="/data"{print $1" "$6" "$NF}' /proc/self/mountinfo; }
 owned_flags() {
@@ -293,8 +311,8 @@ activate() {
   printf '%s\n' "$POLICY" > "$RUN/policy.sha"
   start_watcher || { fault 'independent watcher did not become ready'; return 1; }
   watcher_alive && same_pid && owned_flags && read_native_state && [ "$NATIVE_FAULT" = 0 ] || { fault 'watcher/PID/mount/native state changed at final enable'; return 1; }
-  "$MAGISK" resetprop -n "$PIDKEY" "$PID" && [ "$(getprop "$PIDKEY")" = "$PID" ] &&
-    "$MAGISK" resetprop -n "$KEY" 1 && [ "$(getprop "$KEY")" = 1 ] || { fault 'PID/flag enable readback failed'; return 1; }
+  resetprop -n "$PIDKEY" "$PID" && [ "$(getprop "$PIDKEY")" = "$PID" ] &&
+    resetprop -n "$KEY" 1 && [ "$(getprop "$KEY")" = 1 ] || { fault 'PID/flag enable readback failed'; return 1; }
   printf 'armed pid=%s; waiting for native changed result\n' "$PID" > "$RUN/status"
   note "armed reviewed PID $PID:$START; no future automatic restart"
 }
@@ -322,11 +340,16 @@ restore() {
   set -- $(pidof cameraserver 2>/dev/null)
   case "$#" in
     0)
+      restore_start=1
       if [ "$restore_mount" = 0 ]; then
+        # uninstall.sh runs in post-fs-data, before init first starts the
+        # service: then there is nothing to stop or start.
+        service_state=$(getprop init.svc.cameraserver)
         [ "$(sha "$TARGET")" = "$ORIGINAL" ] && [ "$(sha "/proc/1/root$TARGET")" = "$ORIGINAL" ] &&
-          [ "$(getprop init.svc.cameraserver)" = stopped ] || { fault 'absent camera PID requires verified original and stopped init state'; return 1; }
-      fi
-      restore_start=1;;
+          { [ "$service_state" = stopped ] || [ -z "$service_state" ]; } ||
+          { fault 'absent camera PID requires verified original and stopped or unstarted init state'; return 1; }
+        [ -n "$service_state" ] || restore_start=0
+      fi;;
     1)
       one_pid || { fault 'restore current PID identity uncertain'; return 1; }
       image=$(sha "/proc/$PID/exe")

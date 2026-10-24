@@ -6,7 +6,7 @@
 >
 > Follow the upstream report for investigation and resolution status.
 
-A reversible Magisk module that corrects repeated crop metadata scaling on the **OnePlus 15T (PLZ110)** and **OnePlus 15** with the listed LineageOS builds. It fixes the mismatch between preview and still-photo magnification on independently opened physical rear cameras, including the crop-size failure at 10×.
+A reversible Magisk or APatch module that corrects repeated crop metadata scaling on the **OnePlus 15T (PLZ110)** and **OnePlus 15** with the listed LineageOS builds. It fixes the mismatch between preview and still-photo magnification on independently opened physical rear cameras, including the crop-size failure at 10×.
 
 **Pre-release. Only the listed build identities are supported.** Other builds are rejected, even if their version names look similar.
 
@@ -21,15 +21,15 @@ A reversible Magisk module that corrects repeated crop metadata scaling on the *
 | --- | --- |
 | Build ID | `CP2A.260605.016` |
 | Camera paths | Physical rear camera IDs `2` and `3` |
-| Root manager | Magisk 30.7, tested; newer versions must pass the same checks |
+| Root manager | Magisk 30.7, tested; newer versions must pass the same checks. APatch 11039 or newer (Action support), untested on device |
 
-The installer and runtime also verify the exact original camera service and camera-library hashes. See [profile.json](profile.json). KernelSU and APatch are not supported by this package.
+The installer and runtime also verify the exact original camera service and camera-library hashes. See [profile.json](profile.json). KernelSU is not supported by this package.
 
 ## Install and use
 
 1. Download the module ZIP from [Releases](https://github.com/hackroid/camera2-crop-fix/releases), not GitHub's source-code ZIP.
-2. Install it in **Magisk → Modules → Install from storage**, then reboot.
-3. Close camera applications. Open this module in Magisk and tap **Action** to enable correction.
+2. Install it in **Magisk → Modules → Install from storage** or **APatch → APModule → Install**, then reboot. Under APatch, use a full reboot, not **Soft reboot**, after installing, updating or removing any module; a Soft reboot that applies module changes turns the correction off with a fault.
+3. Close camera applications. Open this module in Magisk or APatch and tap **Action** to enable correction.
 4. Tap **Action** again to pause. The requested state is retained across reboot.
 
 `flag=1` means enabled; `flag=0` means paused. `verified=0` means this camera-service process has not yet processed a matching result. An initial activation may restart the camera service; pausing/resuming the same accepted process does not.
@@ -38,7 +38,7 @@ First installation stays paused. Updates retain your enable request. Beta releas
 
 ### Remove or restore
 
-Remove the module in Magisk and reboot to return to the original system image. The module uses a temporary file bind and never writes the system partition.
+Remove the module in Magisk or APatch and reboot (a full reboot under APatch) to return to the original system image. The module uses a temporary file bind and never writes the system partition.
 
 To restore immediately, close camera applications and run:
 

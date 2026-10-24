@@ -1,8 +1,15 @@
 #!/system/bin/sh
 # SPDX-License-Identifier: Apache-2.0
 [ "$ARCH" = arm64 ] || abort "Only arm64 is supported"
-[ "$BOOTMODE" = true ] || abort "Install from the Magisk app"
-[ "$MAGISK_VER_CODE" -ge 30700 ] || abort "Magisk 30.7 or newer is required"
+[ "$BOOTMODE" = true ] || abort "Install from the Magisk or APatch app"
+# APatch's MAGISK_VER_CODE is a compatibility value, not a Magisk version.
+if [ "$APATCH" = true ]; then
+  # The module is enabled through Action, which APatch provides from 11039.
+  [ "$APATCH_VER_CODE" -ge 11039 ] || abort "APatch 11039 or newer is required"
+  [ -x /data/adb/ap/bin/busybox ] && [ -x /data/adb/ap/bin/resetprop ] || abort "APatch busybox/resetprop not found"
+else
+  [ "$MAGISK_VER_CODE" -ge 30700 ] || abort "Magisk 30.7 or newer is required"
+fi
 (cd "$MODPATH" && sha256sum -c local-files.sha256) >/dev/null || abort "Package integrity check failed"
 . "$MODPATH/profile.sh" || abort "Cannot read build profile"
 # Sets CODENAME when the running build is listed with its vendor fingerprint.
@@ -45,3 +52,4 @@ touch "$MODPATH/skip_mount"
 ui_print "OnePlus 15/15T Camera2 Crop Fix installed. Reboot to finish."
 ui_print "First install stays paused. Close camera apps, then use Action to enable."
 ui_print "Updates preserve your enable request. Unsupported builds stay off."
+[ "$APATCH" != true ] || ui_print "APatch: finish installs, updates and removals with a full reboot, not Soft reboot."
