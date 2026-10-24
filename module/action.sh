@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 MODDIR=$(cd "${0%/*}" && pwd -P) || exit 1
 [ "$MODDIR" = /data/adb/modules/camera2_native_zoom_fix ] || exit 1
-if [ -x /data/adb/ap/bin/busybox ]; then
+if [ "$APATCH" = true ]; then
   # APatch already runs action.sh as root in the init mount namespace.
   /data/adb/ap/bin/busybox sh "$MODDIR/control.sh" toggle; action_result=$?
   /data/adb/ap/bin/busybox sh "$MODDIR/control.sh" status

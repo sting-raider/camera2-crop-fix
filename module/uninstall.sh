@@ -1,6 +1,6 @@
 #!/system/bin/sh
 # SPDX-License-Identifier: Apache-2.0
-if [ -x /data/adb/ap/bin/busybox ]; then
+if [ "$APATCH" = true ]; then
   # APatch already runs uninstall.sh as root in the init mount namespace.
   exec /data/adb/ap/bin/busybox sh /data/adb/modules/camera2_native_zoom_fix/control.sh restore
 fi

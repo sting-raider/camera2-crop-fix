@@ -1,6 +1,9 @@
 #!/system/bin/sh
 # SPDX-License-Identifier: Apache-2.0
-if [ -x /data/adb/ap/bin/busybox ]; then
+# APatch exports APATCH=true to module scripts. A manual run uses APatch's tools
+# only when Magisk's are absent, and passes that choice on to the watcher.
+if [ "$APATCH" = true ] || { [ ! -x /data/adb/magisk/busybox ] && [ -x /data/adb/ap/bin/busybox ]; }; then
+  export APATCH=true
   BB=/data/adb/ap/bin/busybox
   resetprop() { /data/adb/ap/bin/resetprop "$@"; }
 else
@@ -65,7 +68,7 @@ if [ ! -d "$STATE" ]; then mkdir -m 0700 "$STATE" || exit 1; fi
 mkdir -p "$RUN" && chmod 0700 "$RUN" || exit 1
 BOOT=$(cat /proc/sys/kernel/random/boot_id) || exit 1
 INITNS=$(ns 1)
-if [ "$(ns $$)" != "$INITNS" ] || [ -z "$INITNS" ]; then set_off; echo 'Use su -mm (Magisk) or run as APatch root; init namespace required' >&2; exit 1; fi
+if [ "$(ns $$)" != "$INITNS" ] || [ -z "$INITNS" ]; then set_off; echo 'Use su -mm; init namespace required' >&2; exit 1; fi
 mount_id() { awk -v p="$TARGET" '$5==p{print $1}' /proc/self/mountinfo; }
 data_mount() { awk '$5=="/data"{print $1" "$6" "$NF}' /proc/self/mountinfo; }
 owned_flags() {
