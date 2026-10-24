@@ -6,7 +6,7 @@
 >
 > Follow the upstream report for investigation and resolution status.
 
-A reversible Magisk module that corrects repeated crop metadata scaling on the **OnePlus 15T (PLZ110)** with the supported LineageOS build. It fixes the mismatch between preview and still-photo magnification on independently opened physical rear cameras, including the crop-size failure at 10×.
+A reversible Magisk or APatch module that corrects repeated crop metadata scaling on the **OnePlus 15T (PLZ110)** with the supported LineageOS build. It fixes the mismatch between preview and still-photo magnification on independently opened physical rear cameras, including the crop-size failure at 10×.
 
 **Pre-release. One device/build profile is supported.** Other builds are rejected, even if their version names look similar.
 
@@ -18,14 +18,14 @@ A reversible Magisk module that corrects repeated crop metadata scaling on the *
 | LineageOS | `24.0-20261011-NIGHTLY-fairlady` |
 | Build ID | `CP2A.260605.016` |
 | Camera paths | Physical rear camera IDs `2` and `3` |
-| Root manager | Magisk 30.7, tested; newer versions must pass the same checks. APatch with Action button support, untested on device |
+| Root manager | Magisk 30.7, tested; newer versions must pass the same checks. APatch 11039 or newer (Action support), untested on device |
 
 The installer and runtime also verify the exact original camera service and camera-library hashes. See [profile.json](profile.json). KernelSU is not supported by this package.
 
 ## Install and use
 
 1. Download the module ZIP from [Releases](https://github.com/hackroid/camera2-crop-fix/releases), not GitHub's source-code ZIP.
-2. Install it in **Magisk/APatch → Modules → Install from storage**, then reboot.
+2. Install it in **Magisk → Modules → Install from storage** or **APatch → APModule → Install**, then reboot.
 3. Close camera applications. Open this module in Magisk or APatch and tap **Action** to enable correction.
 4. Tap **Action** again to pause. The requested state is retained across reboot.
 
