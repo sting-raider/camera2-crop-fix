@@ -328,11 +328,16 @@ restore() {
   set -- $(pidof cameraserver 2>/dev/null)
   case "$#" in
     0)
+      restore_start=1
       if [ "$restore_mount" = 0 ]; then
+        # uninstall.sh runs in post-fs-data, before init first starts the
+        # service: then there is nothing to stop or start.
+        service_state=$(getprop init.svc.cameraserver)
         [ "$(sha "$TARGET")" = "$ORIGINAL" ] && [ "$(sha "/proc/1/root$TARGET")" = "$ORIGINAL" ] &&
-          [ "$(getprop init.svc.cameraserver)" = stopped ] || { fault 'absent camera PID requires verified original and stopped init state'; return 1; }
-      fi
-      restore_start=1;;
+          { [ "$service_state" = stopped ] || [ -z "$service_state" ]; } ||
+          { fault 'absent camera PID requires verified original and stopped or unstarted init state'; return 1; }
+        [ -n "$service_state" ] || restore_start=0
+      fi;;
     1)
       one_pid || { fault 'restore current PID identity uncertain'; return 1; }
       image=$(sha "/proc/$PID/exe")
