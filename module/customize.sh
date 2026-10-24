@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 [ "$ARCH" = arm64 ] || abort "Only arm64 is supported"
 [ "$BOOTMODE" = true ] || abort "Install from the Magisk or APatch app"
-# APatch reports a fixed MAGISK_VER_CODE of 27000, so it is gated on its own tools.
+# APatch's MAGISK_VER_CODE is a compatibility value, not a Magisk version.
 if [ "$APATCH" = true ]; then
+  # The module is enabled through Action, which APatch provides from 11039.
+  [ "$APATCH_VER_CODE" -ge 11039 ] || abort "APatch 11039 or newer is required"
   [ -x /data/adb/ap/bin/busybox ] && [ -x /data/adb/ap/bin/resetprop ] || abort "APatch busybox/resetprop not found"
 else
   [ "$MAGISK_VER_CODE" -ge 30700 ] || abort "Magisk 30.7 or newer is required"
