@@ -138,8 +138,19 @@ def apply_regions(original, profile, regions):
     return bytes(result)
 
 
+def lineage_versions(profile):
+    require('lineage_version' not in profile, 'Use lineage_versions, not lineage_version')
+    versions = profile.get('lineage_versions')
+    require(isinstance(versions, list) and versions and
+            all(isinstance(version, str) and re.fullmatch(r'24\.0-[0-9]{8}-NIGHTLY-fairlady', version)
+                for version in versions), 'Invalid LineageOS version allowlist')
+    require(len(versions) == len(set(versions)), 'Duplicate LineageOS version')
+    return versions
+
+
 def build_package(args):
     profile = json.loads((ROOT/'profile.json').read_text())
+    versions = lineage_versions(profile)
     build = ROOT/'build'
     build.mkdir(exist_ok=True)
     elf = compile_native(build, args.cc, args.ld)
@@ -155,7 +166,7 @@ def build_package(args):
     (stage/'patch.bin').write_bytes(payload)
     (stage/'patch.plan').write_text(''.join(plan))
     facts = {'ORIGINAL': profile['original_sha256'], 'ORIGINAL_SIZE': profile['original_size'],
-             'LINEAGE_VERSION': profile['lineage_version'], 'DISPLAY_ID': profile['display_id'],
+             'LINEAGE_VERSIONS': ' '.join(versions), 'DISPLAY_ID': profile['display_id'],
              'VENDOR_FINGERPRINT': profile['vendor_fingerprint'], 'ENTRY': hex(profile['entry']),
              'TEXT_END': hex(end), 'STATE_OFFSET': hex(profile['state']), 'PATCH_SIZE': len(payload)}
     (stage/'profile.sh').write_text('# Generated from profile.json and the linked payload.\n' +

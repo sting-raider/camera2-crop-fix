@@ -1,6 +1,11 @@
 {
   "device": "OnePlus 15T (PLZ110)",
-  "lineage_version": "24.0-20261011-NIGHTLY-fairlady",
+  "lineage_versions": [
+    "24.0-20261011-NIGHTLY-fairlady",
+    "24.0-20261014-NIGHTLY-fairlady",
+    "24.0-20261015-NIGHTLY-fairlady",
+    "24.0-20261022-NIGHTLY-fairlady"
+  ],
   "display_id": "CP2A.260605.016",
   "vendor_fingerprint": "OnePlus/PLZ110/OP64DDL1:16/BP2A.250605.015/B.40e10d0-1bdc90a-1c00f52:user/release-keys",
   "original_sha256": "3dde616f0d57fc7e17dae37531aad053bd63b4e86d50a14cd96aa1557ce7ac97",

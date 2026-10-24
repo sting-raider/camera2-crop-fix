@@ -28,6 +28,13 @@ PIDKEY=persist.camera.zoom_crop_fix.pid
 CANDIDATE=$(cat "$MODDIR/native.sha256" 2>/dev/null)
 case "$1" in on|pause|restore|toggle|boot|watch|status) MODE=$1;; *) echo 'on|pause|restore|toggle|status' >&2; exit 2;; esac
 sha() { sha256sum "$1" | awk '{print $1}'; }
+lineage_supported() {
+  running=$(getprop ro.lineage.version)
+  for version in $LINEAGE_VERSIONS; do
+    [ "$running" != "$version" ] || return 0
+  done
+  return 1
+}
 ns() { readlink "/proc/$1/ns/mnt"; }
 birth() { awk '{print $22}' "/proc/$1/stat" 2>/dev/null; }
 number() { case "$1" in *[!0-9]*|'') return 1;; esac; }
@@ -178,7 +185,7 @@ verify_activation() {
     [ -f "$MODDIR/skip_mount" ] && [ ! -e "$MODDIR/system" ] || return 1
   [ "$(readlink -f "$TARGET")" = "$TARGET" ] || return 1
   (cd "$MODDIR" && sha256sum -c local-files.sha256 && sha256sum -c generated-files.sha256) >> "$RUN/events.log" 2>&1 || return 1
-  [ "$(getprop ro.lineage.version)" = "$LINEAGE_VERSION" ] &&
+  lineage_supported &&
     [ "$(getprop ro.build.display.id)" = "$DISPLAY_ID" ] &&
     [ "$(getprop ro.vendor.build.fingerprint)" = "$VENDOR_FINGERPRINT" ] || return 1
   sha256sum -c "$MODDIR/dependencies.sha256" >> "$RUN/events.log" 2>&1 || return 1
