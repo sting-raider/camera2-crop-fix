@@ -25,7 +25,7 @@ The installer and runtime also verify the exact original camera service and came
 ## Install and use
 
 1. Download the module ZIP from [Releases](https://github.com/hackroid/camera2-crop-fix/releases), not GitHub's source-code ZIP.
-2. Install it in **Magisk → Modules → Install from storage** or **APatch → APModule → Install**, then reboot.
+2. Install it in **Magisk → Modules → Install from storage** or **APatch → APModule → Install**, then reboot. Under APatch, use a full reboot, not **Soft reboot**, after installing, updating or removing any module; a Soft reboot that applies module changes turns the correction off with a fault.
 3. Close camera applications. Open this module in Magisk or APatch and tap **Action** to enable correction.
 4. Tap **Action** again to pause. The requested state is retained across reboot.
 
@@ -35,7 +35,7 @@ First installation stays paused. Updates retain your enable request. Beta releas
 
 ### Remove or restore
 
-Remove the module in Magisk or APatch and reboot to return to the original system image. The module uses a temporary file bind and never writes the system partition.
+Remove the module in Magisk or APatch and reboot (a full reboot under APatch) to return to the original system image. The module uses a temporary file bind and never writes the system partition.
 
 To restore immediately, close camera applications and run:
 
