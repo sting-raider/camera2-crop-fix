@@ -115,17 +115,21 @@ class ControllerTests(unittest.TestCase):
                 (True, True, APATCH, 'ap/bin/resetprop', 'true')):
             with tempfile.TemporaryDirectory() as d:
                 device = Device(d, magisk, ap)
-                script = device.local(prologue) + f'KEY={KEY}\n{set_off}\nset_off\necho "APATCH=$APATCH"\n'
+                # The watcher is a child process, so only an exported value reaches it.
+                script = device.local(prologue) + f'KEY={KEY}\n{set_off}\nset_off\n/bin/sh -c \'echo "APATCH=$APATCH"\'\n'
                 _, calls, out = device.run([], env, script)
                 self.assertEqual(calls, [f'{tool} -n {KEY} 0'], (magisk, ap, env))
                 self.assertEqual(out.strip(), f'APATCH={exported}', (magisk, ap, env))
 
-    def boot_entry(self, recorded, env, mode='boot'):
+    def boot_entry(self, recorded, env, mode='boot', symlink=False):
         """Run control.sh up to its status branch; return resetprop calls and whether it got there."""
         with tempfile.TemporaryDirectory() as d:
             device = Device(d, magisk=True, ap=True)
             (device.mod/'profile.sh').write_text('')
             state = device.adb/'camera2_native_zoom_fix'
+            if symlink:
+                state.symlink_to(device.root/'elsewhere')
+                state = device.root/'elsewhere'
             (state/'run').mkdir(parents=True)
             if recorded:
                 (state/'run/boot.id').write_text(recorded + '\n')
@@ -143,6 +147,25 @@ class ControllerTests(unittest.TestCase):
 
     def test_magisk_same_boot_unchanged(self):
         self.assertEqual(self.boot_entry('current-boot', {}), ([f'magisk/magisk resetprop -n {KEY} 0'], True))
+
+    def test_symlinked_state_never_skips_boot_reset(self):
+        self.assertEqual(self.boot_entry('current-boot', APATCH, symlink=True),
+                         ([f'ap/bin/resetprop -n {KEY} 0'], True))
+
+    def test_missing_boot_id_never_skips_boot_reset(self):
+        for boot_id in (None, ''):  # unreadable, or read as empty with no recorded boot
+            with tempfile.TemporaryDirectory() as d:
+                device = Device(d, magisk=False, ap=True)
+                (device.mod/'profile.sh').write_text('')
+                (device.adb/'camera2_native_zoom_fix/run').mkdir(parents=True)
+                if boot_id is None:
+                    device.boot_id.unlink()
+                else:
+                    device.boot_id.write_text(boot_id)
+                prologue = self.source.split('if [ "$MODE" = status ]; then')[0]
+                (device.mod/'control.sh').write_text(device.local(prologue) + 'echo reached\n')
+                _, calls, out = device.run([str(device.mod/'control.sh'), 'boot'], {'ASH_STANDALONE': '1', **APATCH})
+                self.assertEqual((calls, out.strip()), ([f'ap/bin/resetprop -n {KEY} 0'], 'reached'), repr(boot_id))
 
     def test_soft_reboot_check_is_boot_only(self):
         self.assertEqual(self.boot_entry('current-boot', APATCH, mode='on'), ([], True))
