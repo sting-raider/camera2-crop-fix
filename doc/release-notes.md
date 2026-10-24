@@ -1,3 +1,9 @@
+## 1.0.1
+
+- Fix an OTA first-boot false fault: wait up to two minutes for the userdata checkpoint to finish before activating. A pending checkpoint keeps correction off and preserves the existing enable request; it does not latch a permanent fault. If the wait expires, run `on` after boot.
+- Manual activation during a pending checkpoint returns a temporary status. Action remains available to pause while boot activation waits.
+- Native patch bytes, supported builds and integrity checks are unchanged. Host regression checks cover checkpoint completion, timeout and cancellation; first-OTA-boot device validation is still pending.
+
 ## 1.0.0
 
 First stable release. It includes the unreleased 0.4.0-beta.2 changes below, plus APatch support and automatic updates.

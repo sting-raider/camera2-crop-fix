@@ -1,6 +1,6 @@
 id=camera2_native_zoom_fix
 name=OnePlus 15/15T Camera2 Crop Fix
-version=1.0.0
-versionCode=6
+version=1.0.1
+versionCode=7
 author=Camera2 Crop Fix contributors
 description=Fixes crop metadata for physical rear cameras on the listed LineageOS builds. Action toggles enable/pause.

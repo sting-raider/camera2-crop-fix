@@ -91,6 +91,27 @@ INITNS=$(ns 1)
 if [ "$(ns $$)" != "$INITNS" ] || [ -z "$INITNS" ]; then set_off; echo 'Use su -mm; init namespace required' >&2; exit 1; fi
 mount_id() { awk -v p="$TARGET" '$5==p{print $1}' /proc/self/mountinfo; }
 data_mount() { awk '$5=="/data"{print $1" "$6" "$NF}' /proc/self/mountinfo; }
+# This read-only query shares vold's checkpoint commit lock, so it cannot
+# report ready midway through the /data remount. Ordinary boots also return 0.
+data_ready() {
+  timeout 2 /system/bin/vdc checkpoint needsCheckpoint >/dev/null 2>&1
+}
+wait_for_data() {
+  # Use monotonic uptime: the wall clock may change during boot.
+  read -r uptime idle < /proc/uptime || return 75
+  deadline=$(( ${uptime%%.*} + 120 ))
+  while ! data_ready; do
+    [ -e "$STATE/ENABLE" ] && [ ! -e "$STATE/FAULT" ] &&
+      [ ! -e "$MODDIR/disable" ] && [ ! -e "$MODDIR/remove" ] || return 75
+    read -r uptime idle < /proc/uptime || return 75
+    if [ "${uptime%%.*}" -ge "$deadline" ]; then
+      printf '%s\n' 'runtime OFF: /data checkpoint wait timed out; try on after boot' > "$RUN/status"
+      return 75
+    fi
+    printf '%s\n' 'runtime OFF: waiting for /data checkpoint commit' > "$RUN/status"
+    sleep 2
+  done
+}
 owned_flags() {
   options=$(awk -v p="$TARGET" '$5==p{print $6}' /proc/self/mountinfo)
   case ",$options," in *,nosuid,*|*,noexec,*) return 1;; esac
@@ -273,6 +294,13 @@ activate() {
       fi;;
     *) fault 'ambiguous camera PID before activation'; return 1;;
   esac
+  # Also protect manual activation; a pending checkpoint is transient, not an
+  # integrity fault. No bind, restart or enable intent is changed on rejection.
+  data_ready || {
+    printf '%s\n' 'runtime OFF: /data checkpoint pending or query unavailable; try on after boot' > "$RUN/status"
+    cat "$RUN/status" >&2
+    return 75
+  }
   touch "$STATE/ENABLE" || return 1
   printf '%s\n' "$BOOT" > "$RUN/boot.id" || return 1
   if owned_bind; then
@@ -455,9 +483,13 @@ watch() {
   done
 }
 [ "$MODE" != watch ] || { watch; exit $?; }
+# Wait without UI/phase locks so Action can pause and cancel the enable request.
+[ "$MODE" != boot ] || { wait_for_data || exit $?; }
 exec 7>"$RUN/ui.lock"; flock -n 7 || { echo 'Another UI operation is running' >&2; exit 75; }
 exec 9>"$RUN/lock"; flock -n 9 || { echo 'Another control operation is running' >&2; exit 75; }
 if [ "$MODE" = boot ]; then
+  # Another APatch service entry may have completed while this one waited.
+  if [ "$APATCH" = true ] && [ "$(cat "$RUN/boot.id" 2>/dev/null)" = "$BOOT" ]; then exit 0; fi
   set_off || { fault 'boot could not confirm default runtime OFF'; exit 1; }
   [ -e "$STATE/ENABLE" ] && [ ! -e "$STATE/FAULT" ] || exit 0
   [ "$(cat "$RUN/boot.id" 2>/dev/null)" != "$BOOT" ] || { fault 'boot service already processed this boot; no second attempt'; exit 1; }
