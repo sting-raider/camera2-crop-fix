@@ -17,7 +17,7 @@ This configuration uses standard GitHub-hosted Ubuntu runners in a public reposi
 
 References: [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions), [workflow security](https://docs.github.com/en/actions/reference/security/secure-use).
 
-## Publish a pre-release
+## Publish a release
 
 1. Update `version` and the monotonically increasing `versionCode` in `module/module.prop`; update `doc/release-notes.md`. Keep new device support gated by exact identities.
 2. Open/review/merge the changes. CI runs tests, builds the module and uploads a temporary artifact.
@@ -43,4 +43,4 @@ https://github.com/hackroid/camera2-crop-fix/releases/latest/download/update.jso
 
 The workflow uploads the matching JSON and changelog with every release. GitHub's `latest` download route follows stable releases, not pre-releases. Beta users must manually install the first stable version to start following that update channel. Publishing a draft is the final step that makes a stable release and its update metadata public.
 
-The stable channel uses GitHub Releases directly; Pages, a custom server and a separate update branch are unnecessary. See [Magisk's module update format](https://topjohnwu.github.io/Magisk/guides.html#moduleprop).
+Magisk and APatch both read `updateJson` from `module.prop` and use the same JSON format. The stable channel uses GitHub Releases directly; Pages, a custom server and a separate update branch are unnecessary. See [Magisk's module update format](https://topjohnwu.github.io/Magisk/guides.html#moduleprop).

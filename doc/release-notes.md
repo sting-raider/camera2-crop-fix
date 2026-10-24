@@ -1,4 +1,13 @@
-## 0.4.0-beta.2
+## 1.0.0
+
+First stable release. It includes the unreleased 0.4.0-beta.2 changes below, plus APatch support and automatic updates.
+
+- Automatic updates: Magisk and APatch check this module's `update.json` on the stable release channel. Beta users install 1.0.0 manually once.
+- APatch 11039 or newer is supported alongside Magisk 30.7 or newer. Not device-tested on APatch. Under APatch, finish module installs, updates and removals with a full reboot, not Soft reboot.
+- Uninstalling no longer leaves a persistent fault when the camera service has not started yet.
+- Known issue: the first boot after a system OTA can latch a fault when `/data` is remounted for the userdata checkpoint. Check it with `control.sh status` and read [architecture and recovery](https://github.com/hackroid/camera2-crop-fix/blob/main/doc/architecture.md) before clearing it.
+
+Builds and evidence:
 
 Support these official LineageOS builds in one package: OnePlus 15T (PLZ110) `24.0-20261011-NIGHTLY-fairlady`, `24.0-20261014-NIGHTLY-fairlady`, `24.0-20261015-NIGHTLY-fairlady` and `24.0-20261022-NIGHTLY-fairlady`; OnePlus 15 `24.0-20261014-NIGHTLY-infiniti` and `24.0-20261021-NIGHTLY-infiniti`. Each build is accepted only with its own device's vendor fingerprint and camera HAL hash. The native patch source and the camera-service and system camera-library hash checks are unchanged; `camera.qcom.so` is checked against each device's own hash. A listed build with different camera files is still rejected at install and activation.
 
