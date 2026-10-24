@@ -53,6 +53,43 @@ cases.append('unsignalled exit remains persistent fault')
 code, files=run(enabled=False, marker='previous-boot', activate=True)
 assert code==42 and files['flag']=='0\n'
 cases.append('new boot reaches full activation validation, never directly arms')
+
+def restore(service_state, original=True):
+    with tempfile.TemporaryDirectory() as d:
+        script = f'''STATE='{d}'
+RUN="$STATE/run"
+mkdir "$RUN"
+ORIGINAL=original
+TARGET=/system/bin/cameraserver
+log() {{ echo "$*" >> "$STATE/calls"; }}
+pause() {{ log pause; }}
+set_off() {{ log set_off; }}
+fault() {{ log "fault $*"; return 1; }}
+note() {{ :; }}
+sleep() {{ :; }}
+mount_id() {{ :; }}
+pidof() {{ [ ! -e "$STATE/started" ] || echo 100; }}
+one_pid() {{ [ -e "$STATE/started" ] && PID=100; }}
+sha() {{ echo {'original' if original else 'other'}; }}
+getprop() {{ if [ -e "$STATE/started" ]; then echo running; else echo '{service_state}'; fi; }}
+setprop() {{ log "setprop $*"; [ "$1" != ctl.start ] || touch "$STATE/started"; }}
+'''+function('restore').replace('/system/bin/setprop', 'setprop')+'restore\n'
+        result = subprocess.run(['/bin/sh'], input=script, text=True, capture_output=True)
+        calls = (Path(d)/'calls').read_text().splitlines()
+        return result.returncode, calls
+code, calls=restore('')
+assert code==0 and calls==['pause', 'set_off'], calls
+cases.append('restore before init starts cameraserver: no stop/start, no fault')
+code, calls=restore('stopped')
+assert code==0 and calls==['pause', 'setprop ctl.stop cameraserver', 'setprop ctl.start cameraserver', 'set_off'], calls
+cases.append('restore with a stopped service still stops and starts it once')
+for state in ('restarting', 'running'):
+    code, calls=restore(state)
+    assert code==1 and calls==['pause', 'fault absent camera PID requires verified original and stopped or unstarted init state'], calls
+cases.append('restore with no PID mid-respawn remains a fault')
+code, calls=restore('', original=False)
+assert code==1 and not [c for c in calls if c.startswith('setprop')], calls
+cases.append('restore before start still requires the verified original')
 result={'passed':len(cases),'cases':cases,'limits':'Mocked host control flow only; device reboot still required.'}
 
-print(f'{len(cases)} watcher exit cases PASS')
+print(f'{len(cases)} controller cases PASS')

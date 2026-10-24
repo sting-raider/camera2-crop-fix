@@ -16,7 +16,7 @@ with tempfile.TemporaryDirectory() as name:
                         '-ffp-contract=off', '-fno-omit-frame-pointer', '-fsanitize=address,undefined',
                         '-pthread', str(ROOT/f'tests/{test}_test.c'), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
-for test in ('controller', 'installer', 'conventions'):
+for test in ('controller', 'installer', 'manager', 'conventions'):
     subprocess.run([sys.executable, str(ROOT/f'tests/{test}_test.py')], check=True)
 for path in (ROOT/'module').glob('*.sh'):
     subprocess.run(['/bin/sh', '-n', str(path)], check=True)
