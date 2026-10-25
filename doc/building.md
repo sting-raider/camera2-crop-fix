@@ -23,4 +23,4 @@ CC=clang LD_LLD=ld.lld python3 tools/build.py --original /path/to/cameraserver.o
 
 That optional input and the reconstructed output stay local and are never included in the ZIP. Different LLVM versions can produce different native bytes; the same toolchain and inputs are required for byte reproducibility. Before publishing, test the exact CI-built ZIP on the supported device, including enable/pause, restart persistence and original restore. Host checks verify metadata guards, PID/fault logic, concurrent counters, watcher exits and installer bounds; they do not replace device lifecycle testing.
 
-A port needs a new verified profile, ABI/layout analysis and device validation. Renaming the build or removing checksum checks does not create support for another ROM.
+A port needs a new verified profile, including the device's telephoto camera ID, ABI/layout analysis and device validation. Renaming the build or removing checksum checks does not create support for another ROM.

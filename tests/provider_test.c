@@ -47,11 +47,14 @@ int main(void) {
     assert(!zoom_fix_runtime_permitted() && zoom_fix_state.first_fault == FAULT_VERSION);
     reset(); pthread_t a, b;
     assert(pthread_create(&a, 0, counter, (void *)(uptr)2) == 0);
-    assert(pthread_create(&b, 0, counter, (void *)(uptr)3) == 0);
+    assert(pthread_create(&b, 0, counter, (void *)(uptr)ZOOM_FIX_TELE_ID) == 0);
     assert(pthread_join(a, 0) == 0 && pthread_join(b, 0) == 0);
-    assert(zoom_fix_state.changed_id2 == 10000 && zoom_fix_state.changed_id3 == 10000);
+    assert(zoom_fix_state.changed_id2 == 10000 && zoom_fix_state.changed_tele == 10000);
+    /* The other rear ID is never this device's telephoto counter. */
+    zoom_fix_note_changed(ZOOM_FIX_TELE_ID == 3 ? 4 : 3);
+    assert(zoom_fix_state.changed_id2 == 10000 && zoom_fix_state.changed_tele == 10000);
     zoom_fix_latch_fault(3); zoom_fix_note_changed(2);
     assert(zoom_fix_state.changed_id2 == 10000);
-    puts("PASS provider PID gate, sticky fault and concurrent counters");
+    printf("PASS provider PID gate, sticky fault and concurrent counters for telephoto ID %d\n", ZOOM_FIX_TELE_ID);
     return 0;
 }

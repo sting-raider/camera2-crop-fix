@@ -7,6 +7,10 @@ typedef unsigned int u32;
 typedef unsigned long u64;
 typedef unsigned long uptr;
 _Static_assert(sizeof(void *) == 8 && sizeof(u64) == 8, "AArch64 LP64 required");
+/* Same per-device telephoto camera ID as guard.c, from tools/build.py. */
+#ifndef ZOOM_FIX_TELE_ID
+#error "Build with -DZOOM_FIX_TELE_ID=<telephoto camera ID>"
+#endif
 
 extern void zoom_fix_entry(void) __attribute__((visibility("hidden")));
 extern int zoom_guarded_c_wrapper(void *, void *, u32, u32, const void *)
@@ -18,7 +22,7 @@ typedef struct {
     _Atomic(u32) first_fault;
     _Atomic(u32) versions_verified;
     _Atomic(u32) changed_id2;
-    _Atomic(u32) changed_id3;
+    _Atomic(u32) changed_tele;
     u8 reserved[48];
 } FixState;
 _Static_assert(sizeof(FixState) == 64, "reviewed state size");
@@ -139,7 +143,7 @@ void zoom_fix_note_changed(u32 id) {
     if (__atomic_load_n((u32 *)&zoom_fix_state.first_fault, __ATOMIC_ACQUIRE) ||
         __atomic_load_n((u32 *)&zoom_fix_state.versions_verified, __ATOMIC_ACQUIRE) != 1) return;
     if (id == 2) __atomic_fetch_add((u32 *)&zoom_fix_state.changed_id2, 1, __ATOMIC_RELAXED);
-    else if (id == 3) __atomic_fetch_add((u32 *)&zoom_fix_state.changed_id3, 1, __ATOMIC_RELAXED);
+    else if (id == ZOOM_FIX_TELE_ID) __atomic_fetch_add((u32 *)&zoom_fix_state.changed_tele, 1, __ATOMIC_RELAXED);
 }
 static int authorized_pid(void) {
     char value[92];

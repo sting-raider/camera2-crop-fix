@@ -1,3 +1,10 @@
+## 1.0.2
+
+- OnePlus 15: correct the telephoto as well. LineageOS exposes it as camera `4` there, and camera `3` is the ultra-wide ([#10](https://github.com/hackroid/camera2-crop-fix/issues/10)). Earlier versions applied the 15T's layout (main `2`, telephoto `3`) to the OnePlus 15, so its telephoto was never corrected and camera `3` always passed through unchanged. The OnePlus 15 ultra-wide is still not corrected. Not device-tested.
+- The package carries one native patch per device, and the installer applies the one for the detected device. The OnePlus 15 patch differs from the 15T patch only in three camera-ID instructions. The 15T patch bytes are unchanged.
+- `control.sh status` labels the telephoto counter with the device's own camera ID: `changed_id3` on the 15T, `changed_id4` on the OnePlus 15.
+- OnePlus 15T: no functional change, so this update is optional. As with any update, reboot after installing it before using Action; running Action in between can latch a fault.
+
 ## 1.0.1
 
 - Fix an OTA first-boot false fault: wait up to two minutes for the userdata checkpoint to finish before activating. A pending checkpoint keeps correction off and preserves the existing enable request; it does not latch a permanent fault. If the wait expires, run `on` after boot.

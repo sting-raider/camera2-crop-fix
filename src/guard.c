@@ -8,6 +8,12 @@ typedef unsigned long usize;
 typedef signed long i64;
 typedef unsigned long uptr;
 _Static_assert(sizeof(void *) == 8 && sizeof(usize) == 8, "ELF64 ABI required");
+/* tools/build.py sets the rear telephoto's camera ID per device: 3 on the
+ * OnePlus 15T, 4 on the OnePlus 15, whose ID 3 is an unverified ultra-wide. */
+#ifndef ZOOM_FIX_TELE_ID
+#error "Build with -DZOOM_FIX_TELE_ID=<telephoto camera ID>"
+#endif
+_Static_assert(ZOOM_FIX_TELE_ID >= 3 && ZOOM_FIX_TELE_ID <= 9, "one-digit rear telephoto camera ID");
 
 typedef struct {
     usize index;
@@ -115,8 +121,9 @@ static int snapshot(const void *metadata, Snapshot *out) {
 }
 
 /* CaptureOutputStates.cameraId is a const libc++ string reference at +0.
- * Only exact one-character IDs 2/3 can qualify, so reject other valid strings
- * before further reads. Both verified short and long layouts are supported. */
+ * Only exact one-character IDs 2 and ZOOM_FIX_TELE_ID can qualify, so reject
+ * other valid strings before further reads. Both verified short and long
+ * layouts are supported. */
 static u32 source_id(const void *states) {
     if (states == (const void *)0) return 0;
     const u8 *string = ptr_at(states, 0);
@@ -125,7 +132,7 @@ static u32 source_id(const void *states) {
     if (count != 1) return 0;
     const u8 *data = (string[0] & 1) ? ptr_at(string, 16) : string + 1;
     if (data == (const u8 *)0 || data[1] != 0) return 0;
-    return data[0] == '2' ? 2 : data[0] == '3' ? 3 : 0;
+    return data[0] == '2' ? 2 : data[0] == '0' + ZOOM_FIX_TELE_ID ? ZOOM_FIX_TELE_ID : 0;
 }
 
 static int arrays_match(const void *states) {

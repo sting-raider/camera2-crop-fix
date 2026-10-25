@@ -28,12 +28,14 @@ PIDKEY=persist.camera.zoom_crop_fix.pid
 CANDIDATE=$(cat "$MODDIR/native.sha256" 2>/dev/null)
 case "$1" in on|pause|restore|toggle|boot|watch|status) MODE=$1;; *) echo 'on|pause|restore|toggle|status' >&2; exit 2;; esac
 sha() { sha256sum "$1" | awk '{print $1}'; }
-# Sets CODENAME when the running build is listed with its vendor fingerprint.
+# Sets CODENAME and TELE_ID (the device's telephoto camera ID) when the
+# running build is listed with its vendor fingerprint.
 build_supported() {
   running=$(getprop ro.lineage.version); vendor=$(getprop ro.vendor.build.fingerprint)
-  while read -r version fingerprint codename; do
+  while read -r version fingerprint codename tele; do
     [ -n "$version" ] && [ "$running" = "$version" ] && [ "$vendor" = "$fingerprint" ] || continue
-    CODENAME=$codename
+    case "$tele" in [3-9]) ;; *) return 1;; esac
+    CODENAME=$codename; TELE_ID=$tele
     return 0
   done < "$1"
   return 1
@@ -142,14 +144,14 @@ same_pid() {
 }
 read_native_state() {
   # Exact 16-byte root read. Failed access is never a request to relax policy.
-  NATIVE_FAULT=unknown; VERIFIED=; COUNT2=; COUNT3=
+  NATIVE_FAULT=unknown; VERIFIED=; COUNT2=; COUNT_TELE=
   "$BB" dd if="/proc/$PID/mem" of="$RUN/.state.$$" bs=1 skip="$STATE_ADDRESS" count=16 2>/dev/null || { note "native-state read failed"; return 1; }
   [ "$(wc -c < "$RUN/.state.$$")" = 16 ] || return 1
   set -- $("$BB" od -An -tu4 -N16 "$RUN/.state.$$")
   rm -f "$RUN/.state.$$"
   [ "$#" = 4 ] || return 1
   for value in "$@"; do number "$value" || return 1; [ "$value" -le 4294967295 ] || return 1; done
-  NATIVE_FAULT=$1; VERIFIED=$2; COUNT2=$3; COUNT3=$4
+  NATIVE_FAULT=$1; VERIFIED=$2; COUNT2=$3; COUNT_TELE=$4
   [ "$VERIFIED" -le 1 ] && [ "$(birth "$PID")" = "$START" ]
 }
 review_process() {
@@ -271,6 +273,8 @@ activate() {
     return 75
   fi
   verify_activation || { fault 'activation/version/package/permission prerequisite rejected'; return 1; }
+  # The watcher labels the telephoto counter with this device's camera ID.
+  export TELE_ID
   BEFORE_POLICY=$POLICY
   # Decide whether a restart is needed before recording intent or creating a
   # bind. Ordinary busy clients are transient, not a persistent module fault.
@@ -478,7 +482,7 @@ watch() {
     [ "$(getprop "$PIDKEY")" = "$PID" ] && [ "$(getprop "$KEY")" = 1 ] || { fault 'enabled PID/flag changed externally'; flock -u 9; exit 1; }
     ticks=$((ticks+1))
     if [ "$ticks" -ge 15 ]; then policy && [ "$POLICY" = "$(cat "$RUN/policy.sha")" ] || { fault 'policy/enforcing audit changed'; flock -u 9; exit 1; }; ticks=0; fi
-    printf 'pid=%s verified=%s changed_id2=%s changed_id3=%s fault=0\n' "$PID" "$VERIFIED" "$COUNT2" "$COUNT3" > "$RUN/status"
+    printf 'pid=%s verified=%s changed_id2=%s changed_id%s=%s fault=0\n' "$PID" "$VERIFIED" "$COUNT2" "$TELE_ID" "$COUNT_TELE" > "$RUN/status"
     flock -u 9
   done
 }

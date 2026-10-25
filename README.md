@@ -8,6 +8,8 @@
 
 A reversible Magisk or APatch module that corrects repeated crop metadata scaling on the **OnePlus 15T (PLZ110)** and **OnePlus 15** with the listed LineageOS builds. It fixes the mismatch between preview and still-photo magnification on independently opened physical rear cameras, including the crop-size failure at 10×.
 
+**Device-tested only on the OnePlus 15T.** OnePlus 15 support has not been tested on a device, and a user reports that it does not fix the problem there ([#10](https://github.com/hackroid/camera2-crop-fix/issues/10)).
+
 **Only the listed build identities are supported.** Other builds are rejected, even if their version names look similar.
 
 ## Requirements
@@ -20,7 +22,7 @@ A reversible Magisk or APatch module that corrects repeated crop metadata scalin
 | Component | Supported configuration |
 | --- | --- |
 | Build ID | `CP2A.260605.016` |
-| Camera paths | Physical rear camera IDs `2` and `3` |
+| Camera paths | OnePlus 15T: physical rear camera IDs `2` (main) and `3` (telephoto)<br>OnePlus 15: physical rear camera IDs `2` (main) and `4` (telephoto); ultra-wide `3` is not corrected |
 | Root manager | Magisk 30.7, tested; newer versions must pass the same checks. APatch 11039 or newer (Action support), untested on device |
 
 The installer and runtime also verify the exact original camera service and camera-library hashes. See [profile.json](profile.json). KernelSU is not supported by this package.
@@ -32,7 +34,7 @@ The installer and runtime also verify the exact original camera service and came
 3. Close camera applications. Open this module in Magisk or APatch and tap **Action** to enable correction.
 4. Tap **Action** again to pause. The requested state is retained across reboot.
 
-`flag=1` means enabled; `flag=0` means paused. `verified=0` means this camera-service process has not yet processed a matching result. An initial activation may restart the camera service; pausing/resuming the same accepted process does not.
+`flag=1` means enabled; `flag=0` means paused. `verified=0` means this camera-service process has not yet processed a matching result. `changed_id2` and `changed_id3` (`changed_id4` on the OnePlus 15) count corrected main and telephoto results. An initial activation may restart the camera service; pausing/resuming the same accepted process does not.
 
 First installation stays paused. Updates retain your enable request. Magisk and APatch check for module updates automatically. If you installed a beta, install 1.0.0 manually once to join the update channel.
 
@@ -50,7 +52,7 @@ A fault disables correction and blocks automatic retry. System or library update
 
 ## Scope
 
-- Corrects guarded crop metadata for independently opened physical rear cameras `2` and `3`.
+- Corrects guarded crop metadata for independently opened physical rear main and telephoto cameras: IDs `2` and `3` on the OnePlus 15T, `2` and `4` on the OnePlus 15.
 - Covers zoom rounding at 10× and supported photo/preview capture intents.
 - Preserves the original mapper call and return value.
 - Uses native code backed by a verified file; requires no added SELinux rules, Frida, Zygisk or Vector.

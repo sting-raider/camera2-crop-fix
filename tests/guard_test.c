@@ -5,6 +5,11 @@
 #include <string.h>
 #include "../src/guard.c"
 
+/* tools/test.py builds this harness once per device telephoto ID. OTHER is the
+ * remaining one-digit rear ID: the OnePlus 15 ultra-wide 3, or 4 on the 15T. */
+#define TELE ('0' + ZOOM_FIX_TELE_ID)
+#define OTHER (ZOOM_FIX_TELE_ID == 3 ? '4' : '3')
+
 typedef struct { u32 lookup; RoEntry value; } Item;
 typedef struct { Item items[20]; usize size; } Raw;
 typedef struct { uptr vtable; Raw *raw; u8 locked; } Metadata;
@@ -28,7 +33,7 @@ static Item *item(Raw *raw, u32 tag) {
 }
 int zoom_fix_runtime_permitted(void) { return permitted && !fault_code; }
 void zoom_fix_latch_fault(u32 why) { if (!fault_code) fault_code = (int)why; }
-void zoom_fix_note_changed(u32 id) { assert(id == 2 || id == 3); ++changes; }
+void zoom_fix_note_changed(u32 id) { assert(id == 2 || id == ZOOM_FIX_TELE_ID); ++changes; }
 int zoom_fix_find_ro_entry(const void *buffer, u32 tag, RoEntry *out) {
     Item *found = item((Raw *)buffer, tag);
     if (!found) return -2;
@@ -89,7 +94,7 @@ int main(void) {
     int cases = 0;
     reset(); assert(run() == 0 && update_calls == 1 && changes == 1 && !fault_code);
     assert(crop_value[0] == 0 && crop_value[1] == 0 && crop_value[2] == 4096 && crop_value[3] == 3072); ++cases;
-    reset(); string_value[1] = '3'; focal_value = 12.19f; zoom_value = 10.0f;
+    reset(); string_value[1] = TELE; focal_value = 12.19f; zoom_value = 10.0f;
     crop_value[0] = 1843; crop_value[1] = 1382; crop_value[2] = 410; crop_value[3] = 308;
     assert(run() == 0 && update_calls == 1 && changes == 1);
     assert(crop_value[0] == 0 && crop_value[1] == 0 && crop_value[2] == 4096 && crop_value[3] == 3072); ++cases;
@@ -127,22 +132,31 @@ int main(void) {
     assert(crop_value[0] == 8 && crop_value[1] == 6 && crop_value[2] == 4080 && crop_value[3] == 3060); ++cases;
     legacy10(quantized_max, '2'); assert(run() == 0 && changes == 1 && !fault_code);
     assert(crop_value[0] == 0 && crop_value[1] == 0 && crop_value[2] == 4096 && crop_value[3] == 3072); ++cases;
-    legacy10(quantized_max, '3'); assert(run() == 0 && changes == 1 && !fault_code);
+    legacy10(quantized_max, TELE); assert(run() == 0 && changes == 1 && !fault_code);
     assert(crop_value[0] == 0 && crop_value[1] == 0 && crop_value[2] == 4096 && crop_value[3] == 3072); ++cases;
     legacy10(below, '2'); assert(run() == 0 && changes == 1 && !fault_code); ++cases;
     legacy10(above, '2'); unchanged(); ++cases;
     legacy10(10.04f, '2'); unchanged(); ++cases;
-    legacy10(10.05f, '3'); unchanged(); ++cases;
-    for (int id = '2'; id <= '3'; ++id) {
-        reset(); string_value[1] = (u8)id; focal_value = id == '2' ? 5.59f : 12.19f;
+    legacy10(10.05f, TELE); unchanged(); ++cases;
+    const u8 rear[2] = {'2', TELE};
+    for (int index = 0; index < 2; ++index) {
+        u8 id = rear[index];
+        reset(); string_value[1] = id; focal_value = id == '2' ? 5.59f : 12.19f;
         intent_value = 0; assert(run() == 0 && changes == 1 && !fault_code); ++cases;
-        legacy10(quantized_max, (u8)id); intent_value = 0;
+        legacy10(quantized_max, id); intent_value = 0;
         assert(run() == 0 && changes == 1 && !fault_code); ++cases;
     }
+    /* Only main 2 and this device's telephoto qualify: the other rear ID and
+     * swapped focal lengths pass through even with the known bad crop. */
+    legacy10(10.0f, OTHER); unchanged(); ++cases;
+    legacy10(10.0f, OTHER); focal_value = 2.31f; unchanged(); ++cases;
+    legacy10(10.0f, TELE); focal_value = 5.59f; unchanged(); ++cases;
+    legacy10(10.0f, '2'); focal_value = 12.19f; unchanged(); ++cases;
+    reset(); string_value[0] = 4; string_value[1] = '2'; string_value[2] = TELE; unchanged(); ++cases;
     for (int intent = 3; intent <= 7; ++intent) {
         if (intent == 5) continue;
         reset(); intent_value = (u8)intent; unchanged(); ++cases;
     }
-    printf("PASS %d host integration cases; no device actions\n", cases);
+    printf("PASS %d host integration cases for telephoto ID %d; no device actions\n", cases, ZOOM_FIX_TELE_ID);
     return 0;
 }

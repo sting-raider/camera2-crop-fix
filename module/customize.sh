@@ -12,12 +12,14 @@ else
 fi
 (cd "$MODPATH" && sha256sum -c local-files.sha256) >/dev/null || abort "Package integrity check failed"
 . "$MODPATH/profile.sh" || abort "Cannot read build profile"
-# Sets CODENAME when the running build is listed with its vendor fingerprint.
+# Sets CODENAME and TELE_ID (the device's telephoto camera ID) when the
+# running build is listed with its vendor fingerprint.
 build_supported() {
   running=$(getprop ro.lineage.version); vendor=$(getprop ro.vendor.build.fingerprint)
-  while read -r version fingerprint codename; do
+  while read -r version fingerprint codename tele; do
     [ -n "$version" ] && [ "$running" = "$version" ] && [ "$vendor" = "$fingerprint" ] || continue
-    CODENAME=$codename
+    case "$tele" in [3-9]) ;; *) return 1;; esac
+    CODENAME=$codename; TELE_ID=$tele
     return 0
   done < "$1"
   return 1

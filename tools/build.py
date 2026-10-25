@@ -58,13 +58,15 @@ class Elf:
         return found[0]
 
 
-def compile_native(build, cc, linker):
+def compile_native(build, cc, linker, tele_id):
+    build.mkdir(exist_ok=True)
     objects = []
     for name in ('entry.S', 'guard.c', 'provider.c'):
         output = build / (Path(name).stem + '.o')
         subprocess.run([cc, '--target=aarch64-linux-android', '-O2', '-ffreestanding', '-fPIC',
                         '-mno-outline-atomics', '-fno-stack-protector', '-fno-builtin',
                         '-ffp-contract=off', '-fno-unwind-tables', '-fno-asynchronous-unwind-tables',
+                        f'-DZOOM_FIX_TELE_ID={tele_id}',
                         '-Wall', '-Wextra', '-Werror', '-c', str(ROOT/'src'/name), '-o', str(output)], check=True)
         objects.append(str(output))
     command = [linker]
@@ -155,9 +157,13 @@ def devices(profile):
     codenames, versions = [], []
     for device in entries:
         require(isinstance(device, dict) and set(device) ==
-                {'name', 'codename', 'lineage_versions', 'vendor_fingerprint', 'dependencies'}, 'Unexpected device keys')
+                {'name', 'codename', 'lineage_versions', 'vendor_fingerprint', 'telephoto_camera_id', 'dependencies'},
+                'Unexpected device keys')
         codename, listed = device['codename'], device['lineage_versions']
         require(isinstance(codename, str) and re.fullmatch(r'[a-z0-9]+', codename), 'Invalid device codename')
+        # The guard matches a one-digit camera ID string; 0-2 are logical, front and main.
+        tele = device['telephoto_camera_id']
+        require(type(tele) is int and 3 <= tele <= 9, 'Invalid telephoto camera ID')
         require(isinstance(listed, list) and listed and
                 all(isinstance(version, str) and re.fullmatch(r'24\.0-[0-9]{8}-NIGHTLY-' + codename, version)
                     for version in listed), 'Invalid LineageOS version allowlist')
@@ -172,7 +178,7 @@ def devices(profile):
 
 
 def build_list(targets):
-    return ''.join(f'{version} {device["vendor_fingerprint"]} {device["codename"]}\n'
+    return ''.join(f'{version} {device["vendor_fingerprint"]} {device["codename"]} {device["telephoto_camera_id"]}\n'
                    for device in targets for version in device['lineage_versions'])
 
 
@@ -187,18 +193,26 @@ def build_package(args):
     targets = devices(profile)
     build = ROOT/'build'
     build.mkdir(exist_ok=True)
-    elf = compile_native(build, args.cc, args.ld)
-    regions, end = patch_regions(elf, profile)
+    natives = {}
+    for device in targets:
+        elf = compile_native(build/device['codename'], args.cc, args.ld, device['telephoto_camera_id'])
+        natives[device['codename']] = (elf, *patch_regions(elf, profile))
     stage = build/'module'
     if stage.exists():
         shutil.rmtree(stage)
     shutil.copytree(ROOT/'module', stage)
-    payload, plan = bytearray(), []
-    for offset, data in regions:
-        plan.append(f'{len(payload)} {offset} {len(data)}\n')
-        payload.extend(data)
-    (stage/'patch.bin').write_bytes(payload)
-    (stage/'patch.plan').write_text(''.join(plan))
+    layouts = set()
+    for codename, (_, regions, end) in natives.items():
+        payload, plan = bytearray(), []
+        for offset, data in regions:
+            plan.append(f'{len(payload)} {offset} {len(data)}\n')
+            payload.extend(data)
+        (stage/f'patch.{codename}.bin').write_bytes(payload)
+        layouts.add((''.join(plan), end))
+    # One patch.plan and profile.sh serve every device, so only code bytes may differ.
+    require(len(layouts) == 1, 'Device payloads must share one patch layout')
+    (plan, end), = layouts
+    (stage/'patch.plan').write_text(plan)
     facts = {'ORIGINAL': profile['original_sha256'], 'ORIGINAL_SIZE': profile['original_size'],
              'DISPLAY_ID': profile['display_id'], 'ENTRY': hex(profile['entry']),
              'TEXT_END': hex(end), 'STATE_OFFSET': hex(profile['state']), 'PATCH_SIZE': len(payload)}
@@ -236,12 +250,16 @@ def build_package(args):
         'zipUrl': f'https://github.com/{repo}/releases/download/v{version}/{filename}',
         'changelog': f'https://github.com/{repo}/releases/download/v{version}/changelog.md'}, indent=2)+'\n')
     shutil.copyfile(ROOT/'doc/release-notes.md', dist/'changelog.md')
-    report = {'version': version, 'native_sha256': sha(elf.data), 'text_end': hex(end),
-              'patch_bytes': len(payload), 'zip_sha256': sha(output.read_bytes())}
+    report = {'version': version, 'text_end': hex(end), 'patch_bytes': len(payload),
+              'devices': {codename: {'native_sha256': sha(elf.data),
+                                     'patch_sha256': sha((stage/f'patch.{codename}.bin').read_bytes())}
+                          for codename, (elf, _, _) in natives.items()},
+              'zip_sha256': sha(output.read_bytes())}
     if args.original:
-        image = apply_regions(args.original.read_bytes(), profile, regions)
-        (build/'cameraserver.native').write_bytes(image)
-        report['reconstructed_sha256'] = sha(image)
+        for codename, (_, regions, _) in natives.items():
+            image = apply_regions(args.original.read_bytes(), profile, regions)
+            (build/f'cameraserver.{codename}.native').write_bytes(image)
+            report['devices'][codename]['reconstructed_sha256'] = sha(image)
     (build/'manifest.json').write_text(json.dumps(report, indent=2)+'\n')
     print(json.dumps(report, indent=2))
 

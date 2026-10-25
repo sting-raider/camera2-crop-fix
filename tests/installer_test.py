@@ -12,7 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class InstallerTests(unittest.TestCase):
-    def run_patch(self, corrupt_original=False, truncate=False, bad_target=False, short_plan=False):
+    def run_patch(self, corrupt_original=False, truncate=False, bad_target=False, short_plan=False,
+                  codename='infiniti'):
         with tempfile.TemporaryDirectory() as name:
             directory = Path(name)
             original = bytes(range(256)) * 4
@@ -22,7 +23,9 @@ class InstallerTests(unittest.TestCase):
                 data[0] ^= 1
             (directory/'original').write_bytes(data)
             payload = b'ABCDabcdefgh12345678'
-            (directory/'patch.bin').write_bytes(payload[:-1] if truncate else payload)
+            (directory/'patch.infiniti.bin').write_bytes(payload[:-1] if truncate else payload)
+            # Another device's payload of the same size must never be selected.
+            (directory/'patch.fairlady.bin').write_bytes(b'Z' * len(payload))
             plan = ['0 16 4', '4 32 4', '8 48 4', '12 64 8']
             if bad_target:
                 plan[-1] = '12 1020 8'
@@ -30,6 +33,7 @@ class InstallerTests(unittest.TestCase):
                 plan.pop()
             (directory/'patch.plan').write_text('\n'.join(plan)+'\n')
             script = f'''MODPATH={shlex.quote(name)}
+CODENAME={shlex.quote(codename)}
 ORIGINAL={checksum}
 ORIGINAL_SIZE={len(original)}
 PATCH_SIZE={len(payload)}
@@ -59,6 +63,16 @@ patch_image "$MODPATH/original" "$MODPATH/patched"
 
     def test_missing_region(self):
         self.assertNotEqual(self.run_patch(short_plan=True)[0], 0)
+
+    def test_device_payload_selection(self):
+        code, actual, original = self.run_patch(codename='fairlady')
+        self.assertEqual(code, 0)
+        self.assertEqual(actual[16:20], b'ZZZZ')
+        self.assertEqual(actual[:16], original[:16])
+        for codename in ('', 'missing', '../patch', 'infiniti/x', 'Infiniti', 'infiniti '):
+            code, actual, _ = self.run_patch(codename=codename)
+            self.assertNotEqual(code, 0, repr(codename))
+            self.assertIsNone(actual, repr(codename))
 
 
 if __name__ == '__main__':
