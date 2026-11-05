@@ -28,12 +28,13 @@ PIDKEY=persist.camera.zoom_crop_fix.pid
 CANDIDATE=$(cat "$MODDIR/native.sha256" 2>/dev/null)
 case "$1" in on|pause|restore|toggle|boot|watch|status) MODE=$1;; *) echo 'on|pause|restore|toggle|status' >&2; exit 2;; esac
 sha() { sha256sum "$1" | awk '{print $1}'; }
-# Sets CODENAME and TELE_ID (the device's telephoto camera ID) when the
-# running build is listed with its vendor fingerprint.
+# Sets CODENAME and TELE_ID (the device's telephoto camera ID) from the codename
+# ending ro.lineage.version. The OS version itself is not checked; the
+# cameraserver and camera-library hashes still are.
 build_supported() {
-  running=$(getprop ro.lineage.version); vendor=$(getprop ro.vendor.build.fingerprint)
+  running=$(getprop ro.lineage.version)
   while read -r version fingerprint codename tele; do
-    [ -n "$version" ] && [ "$running" = "$version" ] && [ "$vendor" = "$fingerprint" ] || continue
+    case "$running" in *?-"$codename") [ -n "$codename" ] || continue;; *) continue;; esac
     case "$tele" in [3-9]) ;; *) return 1;; esac
     CODENAME=$codename; TELE_ID=$tele
     return 0
@@ -211,8 +212,7 @@ verify_activation() {
     [ -f "$MODDIR/skip_mount" ] && [ ! -e "$MODDIR/system" ] || return 1
   [ "$(readlink -f "$TARGET")" = "$TARGET" ] || return 1
   (cd "$MODDIR" && sha256sum -c local-files.sha256 && sha256sum -c generated-files.sha256) >> "$RUN/events.log" 2>&1 || return 1
-  build_supported "$MODDIR/builds" &&
-    [ "$(getprop ro.build.display.id)" = "$DISPLAY_ID" ] || return 1
+  build_supported "$MODDIR/builds" || return 1
   sha256sum -c "$MODDIR/dependencies.$CODENAME.sha256" >> "$RUN/events.log" 2>&1 || return 1
   hash "$CANDIDATE" && [ "$(sha "$PAYLOAD")" = "$CANDIDATE" ] && [ "$(stat -c %u:%g:%a "$PAYLOAD")" = 0:2000:755 ] &&
     [ "$(label "$PAYLOAD")" = u:object_r:cameraserver_exec:s0 ] &&
