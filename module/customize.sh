@@ -12,20 +12,20 @@ else
 fi
 (cd "$MODPATH" && sha256sum -c local-files.sha256) >/dev/null || abort "Package integrity check failed"
 . "$MODPATH/profile.sh" || abort "Cannot read build profile"
-# Sets CODENAME and TELE_ID (the device's telephoto camera ID) when the
-# running build is listed with its vendor fingerprint.
+# Sets CODENAME and TELE_ID (the device's telephoto camera ID) from the codename
+# ending ro.lineage.version. The OS version itself is not checked; the
+# cameraserver and camera-library hashes still are.
 build_supported() {
-  running=$(getprop ro.lineage.version); vendor=$(getprop ro.vendor.build.fingerprint)
+  running=$(getprop ro.lineage.version)
   while read -r version fingerprint codename tele; do
-    [ -n "$version" ] && [ "$running" = "$version" ] && [ "$vendor" = "$fingerprint" ] || continue
+    case "$running" in *?-"$codename") [ -n "$codename" ] || continue;; *) continue;; esac
     case "$tele" in [3-9]) ;; *) return 1;; esac
     CODENAME=$codename; TELE_ID=$tele
     return 0
   done < "$1"
   return 1
 }
-build_supported "$MODPATH/builds" &&
-  [ "$(getprop ro.build.display.id)" = "$DISPLAY_ID" ] || abort "Unsupported ROM build"
+build_supported "$MODPATH/builds" || abort "Unsupported device"
 sha256sum -c "$MODPATH/dependencies.$CODENAME.sha256" >/dev/null || abort "Unsupported camera libraries"
 state=/data/adb/camera2_native_zoom_fix
 [ ! -L "$state" ] || abort "State path must not be a symlink"

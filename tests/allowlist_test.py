@@ -57,20 +57,18 @@ class AllowlistTests(unittest.TestCase):
                          FAIRLADY, 3),
             'infiniti': ([f'24.0-{date}-NIGHTLY-infiniti' for date in ('20261014', '20261021')], INFINITI, 4)})
 
-    def test_exact_matches_only(self):
+    def test_codename_only(self):
+        # Any OS version or fingerprint is accepted; only the device codename selects the profile.
         for script in ('module/control.sh', 'module/customize.sh'):
             for device in build.devices(PROFILE):
-                for version in device['lineage_versions']:
-                    self.assertEqual(self.supported(script, version, device['vendor_fingerprint']),
-                                     f"{device['codename']} {device['telephoto_camera_id']}", (script, version))
-            for version, fingerprint in (
-                    ('24.0-20261022-NIGHTLY-fairlady', INFINITI), ('24.0-20261021-NIGHTLY-infiniti', FAIRLADY),
-                    ('24.0-20261022-NIGHTLY-fairlady', ''), ('', FAIRLADY), ('', ''), ('*', '*'),
-                    ('24.0-20261021-NIGHTLY-fairlady', FAIRLADY), ('24.0-20261022-NIGHTLY-infiniti', INFINITI),
-                    ('24.0-20261022-NIGHTLY-fairlad', FAIRLADY), ('24.0-20261022-NIGHTLY-fairlady ', FAIRLADY),
-                    ('24.0-20261022-NIGHTLY-fairlady', FAIRLADY + ' fairlady'), ('24.0-20261022', FAIRLADY),
-                    ('24.0-20261011-NIGHTLY-fairlady 24.0-20261014-NIGHTLY-fairlady', FAIRLADY)):
-                self.assertIsNone(self.supported(script, version, fingerprint), (script, version, fingerprint))
+                for version in (*device['lineage_versions'], f"24.0-20991231-NIGHTLY-{device['codename']}",
+                                f"25.0-20270101-UNOFFICIAL-{device['codename']}"):
+                    for fingerprint in (device['vendor_fingerprint'], '', 'other/fingerprint'):
+                        self.assertEqual(self.supported(script, version, fingerprint),
+                                         f"{device['codename']} {device['telephoto_camera_id']}", (script, version))
+            for version in ('', '*', 'fairlady', '24.0-20261022-NIGHTLY-fairlad', '24.0-20261022-NIGHTLY-fairlady ',
+                            '24.0-20261022-NIGHTLY-fairlady-x', '24.0-20261022-NIGHTLY-other', '24.0-20261022'):
+                self.assertIsNone(self.supported(script, version, FAIRLADY), (script, version))
 
     def test_malformed_telephoto_column_rejects(self):
         version = '24.0-20261021-NIGHTLY-infiniti'
@@ -127,13 +125,11 @@ class AllowlistTests(unittest.TestCase):
     def test_gates_use_check(self):
         control, installer = (ROOT/'module/control.sh').read_text(), (ROOT/'module/customize.sh').read_text()
         self.assertIn('''
-  build_supported "$MODDIR/builds" &&
-    [ "$(getprop ro.build.display.id)" = "$DISPLAY_ID" ] || return 1
+  build_supported "$MODDIR/builds" || return 1
   sha256sum -c "$MODDIR/dependencies.$CODENAME.sha256" >> "$RUN/events.log" 2>&1 || return 1
 ''', function('module/control.sh', 'verify_activation'))
         self.assertIn('''
-build_supported "$MODPATH/builds" &&
-  [ "$(getprop ro.build.display.id)" = "$DISPLAY_ID" ] || abort "Unsupported ROM build"
+build_supported "$MODPATH/builds" || abort "Unsupported device"
 sha256sum -c "$MODPATH/dependencies.$CODENAME.sha256" >/dev/null || abort "Unsupported camera libraries"
 ''', installer)
         for text in (control, installer):
