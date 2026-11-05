@@ -18,21 +18,6 @@
   },
   "devices": [
     {
-      "name": "OnePlus 15T (PLZ110)",
-      "codename": "fairlady",
-      "lineage_versions": [
-        "24.0-20261011-NIGHTLY-fairlady",
-        "24.0-20261014-NIGHTLY-fairlady",
-        "24.0-20261015-NIGHTLY-fairlady",
-        "24.0-20261022-NIGHTLY-fairlady"
-      ],
-      "vendor_fingerprint": "OnePlus/PLZ110/OP64DDL1:16/BP2A.250605.015/B.40e10d0-1bdc90a-1c00f52:user/release-keys",
-      "telephoto_camera_id": 3,
-      "dependencies": {
-        "/vendor/lib64/hw/camera.qcom.so": "b7a0af5f8909d138932a97ba68f6f2804eb8a0088c86de49edf390b7a1c58890"
-      }
-    },
-    {
       "name": "OnePlus 15 (CPH2745, CPH2747, CPH2749, PLK110)",
       "codename": "infiniti",
       "lineage_versions": [

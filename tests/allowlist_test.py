@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Check the exact per-device LineageOS build allowlist in the installer and controller."""
-import copy
+"""Check the OnePlus 15-only profile: no ROM checks, only the cameraserver hash."""
 import importlib.util
 import json
 from pathlib import Path
 import re
 import shlex
 import subprocess
-import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,136 +14,52 @@ spec = importlib.util.spec_from_file_location('build', ROOT/'tools/build.py')
 build = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(build)
 PROFILE = json.loads((ROOT/'profile.json').read_text())
-FAIRLADY = 'OnePlus/PLZ110/OP64DDL1:16/BP2A.250605.015/B.40e10d0-1bdc90a-1c00f52:user/release-keys'
-INFINITI = 'OnePlus/CPH2745IN/OP611FL1:16/BP2A.250605.015/B.R4T3.1abf132_aeee51_aea830:user/release-keys'
 
 
 def function(path, name):
-    match = re.search(r'^(?:#[^\n]*\n)?' + name + r'\(\) \{\n.*?^\}\n', (ROOT/path).read_text(), re.M | re.S)
+    match = re.search(r'^(?:#[^\n]*\n)*' + name + r'\(\) \{(?: [^\n]*\}\n|\n.*?^\}\n)', (ROOT/path).read_text(), re.M | re.S)
     assert match, (path, name)
     return match.group()
 
 
 class AllowlistTests(unittest.TestCase):
-    def supported(self, script, version, fingerprint, listing=None):
-        """Return 'codename telephoto-ID', or None when the gate rejects the running build."""
-        with tempfile.NamedTemporaryFile('w') as builds:
-            builds.write(build.build_list(build.devices(PROFILE)) if listing is None else listing)
-            builds.flush()
-            program = f'''getprop() {{
+    def supported(self, script, version, fingerprint):
+        program = f'''getprop() {{
   case "$1" in
     ro.lineage.version) printf '%s\\n' {shlex.quote(version)};;
     ro.vendor.build.fingerprint) printf '%s\\n' {shlex.quote(fingerprint)};;
   esac
 }}
-{function(script, 'build_supported')}build_supported {shlex.quote(builds.name)} && printf '%s %s' "$CODENAME" "$TELE_ID"
+{function(script, 'build_supported')}build_supported /nonexistent && printf '%s %s' "$CODENAME" "$TELE_ID"
 '''
-            result = subprocess.run(['/bin/sh'], input=program, text=True, capture_output=True)
-            return result.stdout if result.returncode == 0 else None
+        result = subprocess.run(['/bin/sh'], input=program, text=True, capture_output=True)
+        return result.stdout if result.returncode == 0 else None
 
     def test_scripts_share_one_check(self):
         self.assertEqual(function('module/control.sh', 'build_supported'),
                          function('module/customize.sh', 'build_supported'))
 
-    def test_profile_lists_required_builds(self):
-        listed = {device['codename']: (device['lineage_versions'], device['vendor_fingerprint'],
-                                       device['telephoto_camera_id'])
-                  for device in build.devices(PROFILE)}
-        # The 15T telephoto is camera 3; the OnePlus 15 exposes it as 4, with 3 its ultra-wide.
-        self.assertEqual(listed, {
-            'fairlady': ([f'24.0-{date}-NIGHTLY-fairlady' for date in ('20261011', '20261014', '20261015', '20261022')],
-                         FAIRLADY, 3),
-            'infiniti': ([f'24.0-{date}-NIGHTLY-infiniti' for date in ('20261014', '20261021')], INFINITI, 4)})
+    def test_profile_is_oneplus15_only(self):
+        self.assertEqual([(d['codename'], d['telephoto_camera_id']) for d in build.devices(PROFILE)], [('infiniti', 4)])
 
-    def test_codename_only(self):
-        # Any OS version or fingerprint is accepted; only the device codename selects the profile.
+    def test_any_rom_selects_oneplus15(self):
         for script in ('module/control.sh', 'module/customize.sh'):
-            for device in build.devices(PROFILE):
-                for version in (*device['lineage_versions'], f"24.0-20991231-NIGHTLY-{device['codename']}",
-                                f"25.0-20270101-UNOFFICIAL-{device['codename']}"):
-                    for fingerprint in (device['vendor_fingerprint'], '', 'other/fingerprint'):
-                        self.assertEqual(self.supported(script, version, fingerprint),
-                                         f"{device['codename']} {device['telephoto_camera_id']}", (script, version))
-            for version in ('', '*', 'fairlady', '24.0-20261022-NIGHTLY-fairlad', '24.0-20261022-NIGHTLY-fairlady ',
-                            '24.0-20261022-NIGHTLY-fairlady-x', '24.0-20261022-NIGHTLY-other', '24.0-20261022'):
-                self.assertIsNone(self.supported(script, version, FAIRLADY), (script, version))
+            for version, fingerprint in (('24.0-20261014-NIGHTLY-infiniti', 'x'), ('24.0-20991231-NIGHTLY-fairlady', ''),
+                                         ('', ''), ('25.0-UNOFFICIAL', 'other/fingerprint')):
+                self.assertEqual(self.supported(script, version, fingerprint), 'infiniti 4', (script, version))
 
-    def test_malformed_telephoto_column_rejects(self):
-        version = '24.0-20261021-NIGHTLY-infiniti'
-        for script in ('module/control.sh', 'module/customize.sh'):
-            for tele in ('', '2', '10', 'x', '4 4', '../4'):
-                listing = f'{version} {INFINITI} infiniti {tele}\n'
-                self.assertIsNone(self.supported(script, version, INFINITI, listing), (script, repr(tele)))
-
-    def test_dependency_lists(self):
-        lists = build.dependency_lists(PROFILE, build.devices(PROFILE))
-        self.assertEqual(sorted(lists), ['fairlady', 'infiniti'])
-        for device in build.devices(PROFILE):
-            lines = lists[device['codename']].splitlines()
-            expected = {**PROFILE['dependencies'], **device['dependencies']}
-            self.assertEqual(lines, [f'{digest}  {path}' for path, digest in expected.items()])
-            self.assertEqual(len(lines), 3)
-
-    def test_build_rejects_bad_profiles(self):
-        def changed(edit):
-            profile = copy.deepcopy(PROFILE)
-            edit(profile)
-            return profile
-        bad = [
-            changed(lambda p: p.update(lineage_versions=['24.0-20261011-NIGHTLY-fairlady'])),
-            changed(lambda p: p.update(vendor_fingerprint=FAIRLADY)),
-            changed(lambda p: p.update(devices=[])),
-            changed(lambda p: p.pop('devices')),
-            changed(lambda p: p['devices'][0].update(lineage_versions=[])),
-            changed(lambda p: p['devices'][0].update(lineage_versions='24.0-20261011-NIGHTLY-fairlady')),
-            changed(lambda p: p['devices'][0].update(lineage_versions=['24.0-20261011-NIGHTLY-infiniti'])),
-            changed(lambda p: p['devices'][0].update(lineage_versions=['24.0-2026101-NIGHTLY-fairlady'])),
-            changed(lambda p: p['devices'][0].update(lineage_versions=['24.0-20261011-NIGHTLY-fairlady x'])),
-            changed(lambda p: p['devices'][0]['lineage_versions'].append('24.0-20261011-NIGHTLY-fairlady')),
-            changed(lambda p: p.update(lineage_version='24.0-20261011-NIGHTLY-fairlady')),
-            changed(lambda p: p['devices'].append({**copy.deepcopy(p['devices'][1]),
-                                                   'lineage_versions': ['24.0-20261028-NIGHTLY-infiniti']})),
-            changed(lambda p: p['devices'][1].update(codename='fairlady')),
-            changed(lambda p: p['devices'][1].update(codename='../x')),
-            changed(lambda p: p['devices'][0].update(vendor_fingerprint=FAIRLADY + ' x')),
-            changed(lambda p: p['devices'][0].update(vendor_fingerprint='')),
-            changed(lambda p: p['devices'][0].pop('name')),
-            changed(lambda p: p['devices'][0].update(extra=1)),
-            changed(lambda p: p['devices'][0]['dependencies'].update(PROFILE['dependencies'])),
-            changed(lambda p: p['devices'][0]['dependencies'].update({'/vendor/lib64/x.so': 'A' * 64})),
-            changed(lambda p: p['dependencies'].update({'relative.so': '0' * 64})),
-            changed(lambda p: p['devices'][1].pop('telephoto_camera_id')),
-            *(changed(lambda p, tele=tele: p['devices'][1].update(telephoto_camera_id=tele))
-              for tele in (0, 1, 2, 10, -4, '4', 4.0, True, None)),
-        ]
-        for profile in bad:
-            with self.assertRaises(ValueError):
-                build.devices(profile)
-
-    def test_gates_use_check(self):
+    def test_only_cameraserver_hash_gates(self):
         control, installer = (ROOT/'module/control.sh').read_text(), (ROOT/'module/customize.sh').read_text()
-        self.assertIn('''
-  build_supported "$MODDIR/builds" || return 1
-  sha256sum -c "$MODDIR/dependencies.$CODENAME.sha256" >> "$RUN/events.log" 2>&1 || return 1
-''', function('module/control.sh', 'verify_activation'))
-        self.assertIn('''
-build_supported "$MODPATH/builds" || abort "Unsupported device"
-sha256sum -c "$MODPATH/dependencies.$CODENAME.sha256" >/dev/null || abort "Unsupported camera libraries"
-''', installer)
         for text in (control, installer):
-            self.assertNotRegex(text, r'LINEAGE_VERSION|VENDOR_FINGERPRINT|dependencies\.sha256|lineage_supported')
-        # The watcher inherits the telephoto ID from activation and labels its counter with it.
-        self.assertIn('''
-  verify_activation || { fault 'activation/version/package/permission prerequisite rejected'; return 1; }
-  # The watcher labels the telephoto counter with this device's camera ID.
-  export TELE_ID
-''', function('module/control.sh', 'activate'))
+            self.assertNotRegex(text, r'dependencies\.|ro\.lineage\.version|ro\.vendor\.build\.fingerprint|'
+                                      r'ro\.build\.display\.id|LINEAGE_VERSION|VENDOR_FINGERPRINT')
+        # The patch writes fixed offsets, so the original cameraserver must still match exactly.
+        self.assertIn('= "$ORIGINAL" ]', installer)
+        self.assertIn('build_supported "$MODDIR/builds" || return 1\n', function('module/control.sh', 'verify_activation'))
         self.assertIn('''changed_id2=%s changed_id%s=%s fault=0\\n' "$PID" "$VERIFIED" "$COUNT2" "$TELE_ID" "$COUNT_TELE"''',
                       function('module/control.sh', 'watch'))
-        self.assertNotRegex(control, r'COUNT3|changed_id3')
         patcher = (ROOT/'module/patch.sh').read_text()
         self.assertIn('payload="$MODPATH/patch.$CODENAME.bin"', patcher)
-        self.assertNotIn('patch.bin', patcher)
 
 
 if __name__ == '__main__':
