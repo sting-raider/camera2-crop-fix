@@ -30,9 +30,9 @@ _Static_assert(__builtin_offsetof(RoEntry, count) == 16, "entry count offset");
 _Static_assert(__builtin_offsetof(RoEntry, data) == 24, "entry data offset");
 
 /* Fixed-VA direct relocations, not indirect calls or new dynamic imports.
- * original_mapper -> cameraserver 0x372ff4
- * find_ro_entry   -> existing C PLT 0x3901c0
- * update_i32      -> existing C++ int32 update PLT 0x38df30, explicit this.
+ * original_mapper -> cameraserver 0x351b98
+ * find_ro_entry   -> existing C PLT 0x36ed60
+ * update_i32      -> existing C++ int32 update PLT 0x36cad0, explicit this.
  * The C++ const CameraMetadata::find PLT at 0x38ed30 is NOT used: it has x8 sret.
  */
 extern int zoom_fix_original_mapper(void *, void *, u32, u32);

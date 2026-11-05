@@ -1,24 +1,24 @@
 {
   "display_id": "CP2A.260605.016",
-  "original_sha256": "3dde616f0d57fc7e17dae37531aad053bd63b4e86d50a14cd96aa1557ce7ac97",
-  "original_size": 4103360,
-  "entry": 3741952,
-  "rx_limit": 3751936,
-  "state": 3973184,
+  "original_sha256": "6e2a974fd15d76f2e1ea1ad867ec0db6ab272429c86cb86faa010d5e98612275",
+  "original_size": 3969024,
+  "entry": 3605664,
+  "rx_limit": 3620864,
+  "state": 3842112,
   "state_size": 64,
-  "callsite": 2458108,
-  "original_mapper": 3616756,
+  "callsite": 2443000,
+  "original_mapper": 3480472,
   "rx_header_offset": 232,
   "rw_header_offset": 344,
-  "rx_start": 753664,
-  "rw_start": 3964928,
+  "rx_start": 737280,
+  "rw_start": 3833856,
   "dependencies": {
-    "/system/lib64/libcamera_client.so": "ce073d3067982520a164de165a6dde91ce038effec82bdfa1424416901f56581",
-    "/system/lib64/libcamera_metadata.so": "f3e2723a2d6fd16d180694d29c5628128bc393a909c99c92990d992ab049587c"
+    "/system/lib64/libcamera_client.so": "7141d49ad43045c91db79fac4093054b0b1f71c9cd55cc63baa281acdf66f253",
+    "/system/lib64/libcamera_metadata.so": "eec9fe5b5ea99ff7514f375ee4e8391eed6abb381b90ae2c4f438b658dbac196"
   },
   "devices": [
     {
-      "name": "OnePlus 15 (CPH2745, CPH2747, CPH2749, PLK110)",
+      "name": "OnePlus 15 (crDroid/Matrixx build)",
       "codename": "infiniti",
       "lineage_versions": [
         "24.0-20261014-NIGHTLY-infiniti",
