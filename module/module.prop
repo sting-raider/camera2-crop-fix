@@ -1,6 +1,6 @@
 id=camera2_native_zoom_fix
-name=OnePlus 15/15T Camera2 Crop Fix
-version=1.0.2-anybuild
+name=OnePlus 15 Camera2 Crop Fix
+version=1.0.2-op15.anyrom
 versionCode=8
 author=Camera2 Crop Fix contributors
-description=Fixes crop metadata for physical rear cameras on any OnePlus 15/15T LineageOS build with the verified camera service (OS version not checked). Action toggles enable/pause.
+description=Fixes crop metadata for physical rear cameras on the OnePlus 15 (no ROM checks; needs the verified cameraserver). Action toggles enable/pause.
