@@ -87,8 +87,8 @@ def patch_regions(elf, profile):
     require(elf.symbol('zoom_fix_entry') == entry and elf.symbol('zoom_fix_state') == state,
             'Native entry/state moved')
     aliases = {'zoom_fix_original_mapper': profile['original_mapper'],
-               'zoom_fix_find_ro_entry': 0x3901c0, 'zoom_fix_update_i32': 0x38df30,
-               'zoom_fix_property_get': 0x391880, 'zoom_fix_getpid': 0x38dda0}
+               'zoom_fix_find_ro_entry': 0x36ed60, 'zoom_fix_update_i32': 0x36cad0,
+               'zoom_fix_property_get': 0x370420, 'zoom_fix_getpid': 0x36c940}
     for name, value in aliases.items():
         require(elf.symbol(name) == value, 'Changed ABI alias: ' + name)
     code = bytearray(profile['rx_limit'] - entry)
@@ -132,7 +132,7 @@ def patch_regions(elf, profile):
 def apply_regions(original, profile, regions):
     require(len(original) == profile['original_size'] and sha(original) == profile['original_sha256'],
             'Unsupported original cameraserver')
-    require(not any(original[0x3918f0:profile['rx_limit']]), 'Original code gap is occupied')
+    require(not any(original[0x370490:profile['rx_limit']]), 'Original code gap is occupied')
     result = bytearray(original)
     for offset, data in regions:
         result[offset:offset+len(data)] = data
